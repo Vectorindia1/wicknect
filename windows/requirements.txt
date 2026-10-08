@@ -1,0 +1,4 @@
+requests>=2.31
+keyring>=24
+pystray>=0.19
+Pillow>=10

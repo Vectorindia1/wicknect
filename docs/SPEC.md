@@ -100,6 +100,8 @@ The probe is the *only* request that goes to a non-portal host and it carries no
 }
 ```
 
+Evaluation: `status_in` and `redirect_location_contains` apply to the first login response; `body_*` and `json_path_equals` apply to the final response after same-host redirects. `bad_credentials` is checked first (status on the first response, body on any).
+
 Rules: unknown keys are ignored; `login.path` containing `REPLACE_ME` => state `FAILURE` with message
 "portal.json not configured" (never a network call). Placeholder values come from secure storage at request time only;
 they are never written to logs or the config file.
