@@ -1,4 +1,5 @@
 __pycache__/
 .pytest_cache/
 *.har
-portal.json
+/portal.json
+/portal.draft.json

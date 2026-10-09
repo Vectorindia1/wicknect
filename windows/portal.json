@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "ssid": "University_Hostel",
+  "portal_host": "172.16.16.16",
+  "scheme": "http",
+  "login": {
+    "path": "/REPLACE_ME",
+    "method": "POST",
+    "content_type": "form",
+    "headers": { "Referer": "http://172.16.16.16/" },
+    "fields": {
+      "username": "{{username}}",
+      "password": "{{password}}"
+    }
+  },
+  "success": {
+    "status_in": [200, 302],
+    "body_contains": [],
+    "body_not_contains": [],
+    "redirect_location_contains": null,
+    "json_path_equals": null
+  },
+  "bad_credentials": {
+    "body_contains": [],
+    "status_in": [401, 403]
+  },
+  "keepalive": null,
+  "fallback": { "type": "none" }
+}
