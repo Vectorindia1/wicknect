@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   push:
     paths: ["windows/**", ".github/workflows/windows.yml"]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -16,3 +18,12 @@ jobs:
         with:
           name: HostelAutoLogin-exe
           path: windows/dist/HostelAutoLogin.exe
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-build-${{ github.run_number }}
+          name: Windows EXE build ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body: "Windows tray app. Download HostelAutoLogin.exe and double-click it."
+          files: windows/dist/HostelAutoLogin.exe
