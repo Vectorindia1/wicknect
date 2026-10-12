@@ -11,21 +11,22 @@ No auth bypass, no MAC spoofing, no scanning. No telemetry; everything stays on 
 | Windows app (Python, tray) | `windows/` | done, 45 tests; `.exe` must be built on Windows |
 | Android app (Kotlin, Compose) | `android/` | `:core` has 35 JVM tests; `:app` not yet built/run on a device |
 
+**New here? Read `docs/USER_GUIDE.md` (plain-language, no technical steps).**
+
 ## 1. Set up (for any captive-portal Wi-Fi)
 
 You do not need to know how your portal works. Automatic mode reads the portal's own login page the way a browser does.
 
-1. Connect to the Wi-Fi that shows a login page (log out / wait for the session to expire if you are already online).
-2. Open the app → **Setup**: add your Wi-Fi name(s) with *Add current Wi-Fi* (all networks that use the same username/password go in
-   the list, e.g. hostel + college), enter **your own** username and password.
-3. Tap **Detect my portal** (repeat once while on each network if they have different login pages). The app shows the address of the login page and what it found; confirm only if it is your Wi-Fi's page.
-   From then on credentials are sent only to that address.
-4. Tap **Test Login**. Done: the app logs in again whenever the session expires.
+1. Connect to your Wi-Fi (the one that shows a login page).
+2. Open the app → **Connect** tab: check the Wi-Fi name(s) (several names with the same login go on separate lines), enter
+   **your own** username and password, tap **Connect**.
+3. If asked "Is this your Wi-Fi's login page?" tap **Yes** (this pins your password to that address).
+4. Done: the app logs in again whenever the session expires.
 
 Automatic mode cannot handle portals that need a CAPTCHA/OTP, or a JavaScript-only login page (no HTML form). For those,
 build a manual profile: capture a HAR in Chrome (F12 → Network → Preserve log → log in → *Save all as HAR with content*), run
 `python tools/har_analyzer.py capture.har -o portal.draft.json`, review it (secrets are replaced by placeholders; never share the raw
-`.har`), and paste it in **Settings → Advanced** (Android) or `%APPDATA%\HostelAutoLogin\portal.json` (Windows).
+`.har`), and paste it in **Settings → Expert options** (Android) or `%APPDATA%\HostelAutoLogin\portal.json` (Windows).
 Schema: `docs/SPEC.md` §4 and §4b; example: `docs/examples/portal.manual.example.json`.
 
 ### Wi-Fi keeps disconnecting?

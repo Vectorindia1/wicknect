@@ -29,14 +29,17 @@ fun DashboardScreen(app: HostelApp) {
     var auto by remember { mutableStateOf(app.store.settings().autoLogin) }
     Page {
         val cfgInfo = remember(ui) { try { app.portal.config() } catch (e: Exception) { null } }
-        if (cfgInfo == null || cfgInfo.unconfiguredReason != null || app.store.settings().ssids.isEmpty() || !app.store.hasCredentials())
-            InfoCard("Setup needed", "Open the Setup tab: enter your Wi-Fi name, username and password, then tap \"Detect my portal\".")
-        else InfoCard("Portal", "${cfgInfo.scheme}://${cfgInfo.portalHost} (${cfgInfo.mode})")
+        val needsSetup = cfgInfo == null || cfgInfo.unconfiguredReason != null || app.store.settings().ssids.isEmpty() || !app.store.hasCredentials()
+        InfoCard("Status", when {
+            needsSetup -> "Not set up yet. Open the Connect tab and tap Connect."
+            ui.state == com.hostelautologin.core.State.VALIDATED -> "You're online"
+            ui.state == com.hostelautologin.core.State.AUTHENTICATING || ui.state == com.hostelautologin.core.State.VERIFYING -> "Logging you in…"
+            ui.state == com.hostelautologin.core.State.LOGIN_NEEDED -> "Wi-Fi is asking you to log in. Logging in now…"
+            ui.state == com.hostelautologin.core.State.FAILURE -> "Couldn't log in. " + com.hostelautologin.core.Friendly.login(com.hostelautologin.core.LoginResult(com.hostelautologin.core.Outcome.TRANSIENT, ui.message))
+            else -> "Waiting for one of your Wi-Fi networks"
+        })
         InfoCard("Wi-Fi network (SSID)", (ui.ssid ?: "not connected / unreadable") + "\nYour networks: " + app.store.settings().ssids.joinToString().ifEmpty { "none yet" })
-        InfoCard("State", ui.state.name + if (ui.paused) " (paused)" else "")
-        InfoCard("Internet", when (ui.internetOk) { true -> "Reachable"; false -> "Not reachable"; null -> "Unknown" })
         InfoCard("Last login", ui.lastLoginMillis?.let { DateFormat.getDateTimeInstance().format(Date(it)) } ?: "never")
-        if (ui.message.isNotEmpty()) InfoCard("Last message", ui.message)
         if (!ui.serviceRunning) InfoCard("Service", "Not running – open the app again or check battery settings")
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {

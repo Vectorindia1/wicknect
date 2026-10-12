@@ -92,24 +92,24 @@ class PortalConfig:
     @classmethod
     def from_dict(cls, d: dict) -> "PortalConfig":
         if not isinstance(d, dict) or d.get("schema_version") != 1:
-            raise ConfigError("portal.json: unsupported or missing schema_version (expected 1)")
+            raise ConfigError("login profile: unsupported or missing schema_version (expected 1)")
         mode = str(d.get("mode", "manual")).lower()
         if mode not in ("manual", "auto"):
-            raise ConfigError("portal.json: mode must be manual or auto")
+            raise ConfigError("login profile: mode must be manual or auto")
         host = str(d.get("portal_host", "")).strip()
         if (not host and mode == "manual") or "/" in host or "@" in host or "://" in host:
-            raise ConfigError("portal.json: portal_host must be a bare host or host:port")
+            raise ConfigError("login profile: portal_host must be a bare host or host:port")
         scheme = str(d.get("scheme", "http")).lower()
         if scheme not in ("http", "https"):
-            raise ConfigError("portal.json: scheme must be http or https")
+            raise ConfigError("login profile: scheme must be http or https")
         login = d.get("login") or {}
         path = str(login.get("path", ""))
         if not path and mode == "manual":
-            raise ConfigError("portal.json: login.path is required")
+            raise ConfigError("login profile: login.path is required")
         if str(login.get("method", "POST")).upper() not in ("GET", "POST"):
-            raise ConfigError("portal.json: login.method must be GET or POST")
+            raise ConfigError("login profile: login.method must be GET or POST")
         if login.get("content_type", "form") not in ("form", "json"):
-            raise ConfigError("portal.json: login.content_type must be form or json")
+            raise ConfigError("login profile: login.content_type must be form or json")
         headers = {k: v for k, v in (login.get("headers") or {}).items() if k.lower() not in _FORBIDDEN_HEADERS}
         login = {**login, "headers": headers, "method": str(login.get("method", "POST")).upper()}
         ka = d.get("keepalive")
@@ -138,7 +138,7 @@ class PortalConfig:
     @property
     def unconfigured_reason(self) -> str | None:
         if self.mode == "auto":
-            return None if self.origins else 'No portal set up yet. Open Settings and click "Detect my portal" while on your Wi-Fi.'
+            return None if self.origins else 'Not set up yet: no portal set up yet. Open Settings and click Connect while on your Wi-Fi.'
         blob = json.dumps(self.login)
         if "REPLACE_ME" in blob:
             return "portal.json is still the placeholder (contains REPLACE_ME). Fill it in from your captured login."

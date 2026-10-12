@@ -53,7 +53,7 @@ def main(argv=None) -> int:
     if args.check_config:
         try:
             cfg = PortalConfig.load(portal_json_path())
-            print(cfg.unconfigured_reason or "portal.json looks configured")
+            print(cfg.unconfigured_reason or "login profile looks configured")
             print(f"portal: {cfg.scheme}://{cfg.portal_host}  login path set: {not cfg.unconfigured_reason}")
             return 0
         except ConfigError as e:
@@ -67,7 +67,11 @@ def main(argv=None) -> int:
 
     settings = Settings.load()
     from .ui_setup import show_setup
-    if not settings.username or not creds.get_password(settings.username):
+    try:
+        configured = PortalConfig.load(portal_json_path()).unconfigured_reason is None
+    except ConfigError:
+        configured = False
+    if not settings.username or not creds.get_password(settings.username) or not settings.ssids or not configured:
         if not show_setup(settings, fallback=fallback.get_browser_fallback()):
             return 0
 

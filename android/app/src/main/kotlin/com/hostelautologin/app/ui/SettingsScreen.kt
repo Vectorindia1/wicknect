@@ -31,6 +31,7 @@ fun SettingsScreen(app: HostelApp) {
     var reconnect by remember { mutableStateOf(app.store.settings().autoReconnect) }
     var json by remember { mutableStateOf(app.portal.text()) }
     var msg by remember { mutableStateOf("") }
+    var expert by remember { mutableStateOf(false) }
 
     Page {
         Text("Reliability", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
@@ -60,24 +61,27 @@ fun SettingsScreen(app: HostelApp) {
                 "\"Switch to mobile data automatically\" / \"Smart network switch\" / \"Wi-Fi+\", and keep \"Connect automatically\" on for each network.",
         )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Log in even if the SSID can't be read")
+            Text("Log in even if the phone can't tell which Wi-Fi it is on")
             Switch(checked = unknownSsid, onCheckedChange = {
                 unknownSsid = it
                 app.store.saveSettings(app.store.settings().copy(loginIfSsidUnknown = it))
             })
         }
 
-        Text("Advanced: portal.json", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-        Text("Normally set by \"Detect my portal\" in Setup. Only edit this if your portal needs a hand-made login request (see README); it is validated before saving.")
-        OutlinedTextField(json, { json = it }, modifier = Modifier.fillMaxWidth(), minLines = 10)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                msg = try {
-                    PortalConfig.parse(json)
-                    app.portal.save(json); AutoLoginService.settingsChanged(); "Saved."
-                } catch (e: ConfigException) { "Invalid: ${e.message}" }
-            }) { Text("Save") }
-            OutlinedButton(onClick = { app.portal.reset(); json = app.portal.text(); msg = "Reset to automatic mode." }) { Text("Reset") }
+        OutlinedButton(onClick = { expert = !expert }) { Text(if (expert) "Hide expert options" else "Expert options (most people don't need these)") }
+        if (expert) {
+            Text("Expert: login profile", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+            Text("The Connect tab sets this up for you. Only edit it if your Wi-Fi needs a hand-made login request; it is checked before saving.")
+            OutlinedTextField(json, { json = it }, modifier = Modifier.fillMaxWidth(), minLines = 10)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    msg = try {
+                        PortalConfig.parse(json)
+                        app.portal.save(json); AutoLoginService.settingsChanged(); "Saved."
+                    } catch (e: ConfigException) { "Invalid: ${e.message}" }
+                }) { Text("Save") }
+                OutlinedButton(onClick = { app.portal.reset(); json = app.portal.text(); msg = "Reset to automatic mode." }) { Text("Reset") }
+            }
         }
         if (msg.isNotEmpty()) Text(msg)
     }

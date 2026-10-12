@@ -57,10 +57,10 @@ data class PortalConfig(
     /** Non-null when the file is still the placeholder / draft; no network call may be made. */
     val unconfiguredReason: String?
         get() {
-            if (mode == "auto") return if (origins.isEmpty()) "No portal set up yet. Open Setup and tap \"Detect my portal\" while on your Wi-Fi." else null
+            if (mode == "auto") return if (origins.isEmpty()) "Not set up yet: no portal set up yet. Open the Connect tab and tap Connect while on your Wi-Fi." else null
             val blob = listOf(loginPath, headers.toString(), fields.toString(), preFetch?.path.orEmpty()).joinToString(" ")
-            if ("REPLACE_ME" in blob) return "portal.json is still the placeholder (contains REPLACE_ME). Edit it in Settings."
-            if (Regex("""\{\{\s*REVIEW""").containsMatchIn(blob)) return "portal.json contains unresolved {{REVIEW:...}} fields."
+            if ("REPLACE_ME" in blob) return "The expert login profile is still the placeholder (contains REPLACE_ME). Fix it under Settings > Advanced, or reset it."
+            if (Regex("""\{\{\s*REVIEW""").containsMatchIn(blob)) return "The expert login profile contains unresolved {{REVIEW:...}} fields."
             return null
         }
 

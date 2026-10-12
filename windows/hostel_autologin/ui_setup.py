@@ -1,4 +1,5 @@
-"""First-run / Settings dialog (tkinter). Own Tk root per dialog so it can run from any thread."""
+"""One-window setup for ordinary users (tkinter): Wi-Fi name(s), username, password, one Connect button.
+Own Tk root per dialog so it can run from any thread."""
 from __future__ import annotations
 
 import threading
@@ -6,41 +7,53 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable
 
-from . import creds
+from . import creds, friendly, startup
 from .config import ConfigError, PortalConfig, Settings, auto_config_json, portal_json_path
 from .discovery import PortalDiscovery
-from .wifi import current_ssid
-from .login_engine import LoginEngine
+from .login_engine import LoginEngine, LoginResult, Outcome
 from .masking import masker
+from .wifi import current_ssid
 
 
 def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None = None,
                fallback: Callable | None = None) -> bool:
-    """Blocking. Returns True if saved."""
+    """Blocking. Returns True once the user has saved working settings."""
     saved = {"ok": False}
     root = tk.Tk()
-    root.title("HostelAutoLogin – Setup")
+    root.title("HostelAutoLogin – Get connected")
     root.resizable(False, False)
-    frm = ttk.Frame(root, padding=14)
+    frm = ttk.Frame(root, padding=16)
     frm.grid()
-    v_user, v_pw = tk.StringVar(value=settings.username), tk.StringVar()
-    v_auto = tk.BooleanVar(value=settings.auto_login)
-    has_pw = bool(settings.username and creds.get_password(settings.username))
 
-    ttk.Label(frm, text="Wi-Fi names\n(one per line)").grid(row=0, column=0, sticky="nw", pady=4)
+    ttk.Label(frm, text="1. Connect your computer to your Wi-Fi.\n2. Type your own Wi-Fi login details.\n3. Click Connect. That's it.",
+              justify="left").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+
+    ttk.Label(frm, text="Wi-Fi name").grid(row=1, column=0, sticky="nw", pady=4)
     t_ssids = tk.Text(frm, width=34, height=3)
-    t_ssids.insert("1.0", "\n".join(settings.ssids))
-    t_ssids.grid(row=0, column=1, pady=4)
-    for i, (label, var, show) in enumerate([("Username", v_user, ""), ("Password", v_pw, "•")], start=1):
-        ttk.Label(frm, text=label).grid(row=i, column=0, sticky="w", pady=4)
-        ttk.Entry(frm, textvariable=var, width=34, show=show).grid(row=i, column=1, pady=4)
-    ttk.Label(frm, text="(leave blank to keep the saved password)" if has_pw else "Stored in Windows Credential Manager",
-              foreground="#666").grid(row=3, column=1, sticky="w")
-    ttk.Checkbutton(frm, text="Log in automatically", variable=v_auto).grid(row=4, column=1, sticky="w", pady=4)
-    v_recon = tk.BooleanVar(value=settings.auto_reconnect)
-    ttk.Checkbutton(frm, text="Reconnect Wi-Fi automatically when it drops", variable=v_recon).grid(row=4, column=1, sticky="e", pady=4)
-    status = ttk.Label(frm, text="", wraplength=320, justify="left")
-    status.grid(row=5, column=0, columnspan=3, sticky="w", pady=6)
+    t_ssids.insert("1.0", "\n".join(settings.ssids) or (current_ssid() or ""))
+    t_ssids.grid(row=1, column=1, pady=4)
+    ttk.Label(frm, text="Several Wi-Fi names with the same login (hostel, college…)?\nPut each one on its own line.",
+              foreground="#666", justify="left").grid(row=2, column=1, sticky="w")
+
+    v_user, v_pw = tk.StringVar(value=settings.username), tk.StringVar()
+    has_pw = bool(settings.username and creds.get_password(settings.username))
+    ttk.Label(frm, text="Username").grid(row=3, column=0, sticky="w", pady=4)
+    ttk.Entry(frm, textvariable=v_user, width=36).grid(row=3, column=1, pady=4)
+    ttk.Label(frm, text="Password").grid(row=4, column=0, sticky="w", pady=4)
+    ttk.Entry(frm, textvariable=v_pw, width=36, show="•").grid(row=4, column=1, pady=4)
+    ttk.Label(frm, text="Leave empty to keep the saved password" if has_pw else "Stored safely in Windows Credential Manager",
+              foreground="#666").grid(row=5, column=1, sticky="w")
+
+    v_start = tk.BooleanVar(value=True)
+    ttk.Checkbutton(frm, text="Start automatically when I sign in to Windows", variable=v_start).grid(row=6, column=1, sticky="w", pady=(8, 0))
+
+    status = ttk.Label(frm, text="", wraplength=380, justify="left")
+    status.grid(row=8, column=0, columnspan=2, sticky="w", pady=8)
+    btn = ttk.Button(frm, text="Connect")
+    btn.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+
+    def say(text: str, ok: bool | None = None) -> None:
+        root.after(0, lambda: status.config(text=text, foreground={True: "#1a7f37", False: "#b42318", None: "#222"}[ok]))
 
     def ssid_list() -> list[str]:
         out: list[str] = []
@@ -49,90 +62,106 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
                 out.append(line.strip())
         return out
 
-    def password() -> str:
-        return v_pw.get() or (creds.get_password(v_user.get().strip()) or "")
+    def finish(r: LoginResult) -> None:
+        masker.register(v_pw.get())
+        ok = r.outcome is Outcome.SUCCESS
+        say(friendly.login(LoginResult(r.outcome, masker.mask(r.detail))), ok)
+        root.after(0, lambda: btn.state(["!disabled"]))
+        if ok:
+            saved["ok"] = True
+            if on_saved:
+                on_saved(settings)
 
-    def test():
-        user, pw = v_user.get().strip(), password()
-        if not user or not pw:
-            status.config(text="Enter username and password first.")
-            return
-        masker.register(pw)
-        status.config(text="Testing login… (you must be on the hostel Wi-Fi)")
-        btn_test.state(["disabled"])
+    def run_test(user: str, pw: str, allow_redetect: bool) -> None:
+        say("Logging in…")
+        try:
+            r = LoginEngine(PortalConfig.load(portal_json_path()), fallback).login(user, pw)
+        except ConfigError as e:
+            r = LoginResult(Outcome.CONFIG_ERROR, str(e))
+        if allow_redetect and r.outcome is Outcome.CONFIG_ERROR and ("refused" in r.detail or "not set up" in r.detail.lower()):
+            if detect_and_confirm(user, pw):
+                return
+        finish(r)
 
-        def work():
+    def detect_and_confirm(user: str, pw: str) -> bool:
+        """True if the flow continued (user confirmed, test running); False to let the caller report."""
+        say("Looking for your Wi-Fi's login page…")
+        res = PortalDiscovery().detect()
+        if res.kind == "online":
+            say("You already have internet, so there is no login page to find right now. Turn Wi-Fi off and on "
+                "(or wait until the Wi-Fi logs you out), then click Connect again.", False)
+            root.after(0, lambda: btn.state(["!disabled"]))
+            return True
+        if res.kind == "problem":
+            say(res.message, False)
+            root.after(0, lambda: btn.state(["!disabled"]))
+            return True
+        p = res.portal
+        answer: dict = {}
+        evt = threading.Event()
+
+        def ask():
+            note = ("\n\nNote: this page is not encrypted, so other people on the same Wi-Fi could see your password. "
+                    "That is how your Wi-Fi works, not something this app controls.") if p.scheme == "http" else ""
+            answer["yes"] = messagebox.askyesno("Is this your Wi-Fi's login page?",
+                                                f"We found a login page at {p.host}.\n\nIf this is the page you normally log in on, click Yes. "
+                                                f"Your username and password will only ever be sent to this address.{note}", parent=root)
+            evt.set()
+        root.after(0, ask)
+        evt.wait()
+        if not answer["yes"]:
+            say("Okay, nothing was saved.")
+            root.after(0, lambda: btn.state(["!disabled"]))
+            return True
+        try:
+            known = PortalConfig.load(portal_json_path()).origins
+        except ConfigError:
+            known = []
+        origin = (p.host.lower(), p.scheme)
+        origins = known if origin in known else known + [origin]
+        portal_json_path().write_text(auto_config_json(origins, p.form.username_field, p.form.password_field), encoding="utf-8")
+        run_test(user, pw, allow_redetect=False)
+        return True
+
+    def work(user: str, pw: str) -> None:
+        try:
             try:
-                res = LoginEngine(PortalConfig.load(portal_json_path()), fallback).login(user, pw)
-                msg = f"{res.outcome.value}: {masker.mask(res.detail)}"
-            except ConfigError as e:
-                msg = f"CONFIG_ERROR: {e}"
-            root.after(0, lambda: (status.config(text=msg), btn_test.state(["!disabled"])))
-        threading.Thread(target=work, daemon=True).start()
+                configured = PortalConfig.load(portal_json_path()).unconfigured_reason is None
+            except ConfigError:
+                configured = False
+            if not configured:
+                detect_and_confirm(user, pw)
+            else:
+                run_test(user, pw, allow_redetect=True)
+        except Exception:
+            say("Something unexpected went wrong. Please try again.", False)
+            root.after(0, lambda: btn.state(["!disabled"]))
 
-    def save():
+    def connect() -> None:
         user, ssids = v_user.get().strip(), ssid_list()
-        if not ssids or not user:
-            messagebox.showwarning("HostelAutoLogin", "At least one Wi-Fi name and a username are required.", parent=root)
-            return
-        pw = v_pw.get()
-        if pw:
-            creds.save_password(user, pw)
-        elif not creds.get_password(user):
-            messagebox.showwarning("HostelAutoLogin", "Enter a password.", parent=root)
-            return
+        pw = v_pw.get() or (creds.get_password(user) or "")
+        if not ssids:
+            return say("Please type the name of your Wi-Fi first.", False)
+        if not user:
+            return say("Please type your username.", False)
+        if not pw:
+            return say("Please type your password.", False)
+        masker.register(pw)
+        if v_pw.get():
+            creds.save_password(user, v_pw.get())
         if settings.username and settings.username != user:
             creds.delete_password(settings.username)
-        settings.ssids, settings.username, settings.auto_login, settings.auto_reconnect = ssids, user, v_auto.get(), v_recon.get()
+        settings.ssids, settings.username = ssids, user
+        settings.start_with_windows = v_start.get()
         settings.save()
-        saved["ok"] = True
-        if on_saved:
-            on_saved(settings)
-        root.destroy()
+        try:
+            startup.set_enabled(v_start.get())
+        except OSError:
+            pass
+        btn.state(["disabled"])
+        threading.Thread(target=work, args=(user, pw), daemon=True).start()
 
-    def use_current():
-        cur = current_ssid()
-        if cur:
-            if cur not in ssid_list():
-                t_ssids.insert("end", ("\n" if t_ssids.get("1.0", "end").strip() else "") + cur)
-        else:
-            status.config(text="Can't read the Wi-Fi name (not connected, or Windows needs Location access). Type it instead.")
-
-    def detect():
-        status.config(text="Looking for your portal's login page…")
-        btn_detect.state(["disabled"])
-
-        def work():
-            res = PortalDiscovery().detect()
-            root.after(0, lambda: done(res))
-
-        def done(res):
-            btn_detect.state(["!disabled"])
-            if res.kind == "online":
-                status.config(text="You already have internet, so there is no login page right now. Reconnect to the Wi-Fi (or wait for the session to expire) and try again.")
-            elif res.kind == "problem":
-                status.config(text=res.message)
-            else:
-                p = res.portal
-                if messagebox.askyesno("HostelAutoLogin", p.summary + f"\n\nSend your username and password to {p.host}?\n"
-                                       "Only continue if this is your Wi-Fi's login page.", parent=root):
-                    try:                      # several networks may use different login pages: keep every confirmed one
-                        known = PortalConfig.load(portal_json_path()).origins
-                    except ConfigError:
-                        known = []
-                    origins = known + [(p.host.lower(), p.scheme)] if (p.host.lower(), p.scheme) not in known else known
-                    portal_json_path().write_text(auto_config_json(origins, p.form.username_field, p.form.password_field), encoding="utf-8")
-                    status.config(text=f"Portal saved: {p.scheme}://{p.host}. Now click Test Login.")
-        threading.Thread(target=work, daemon=True).start()
-
-    ttk.Button(frm, text="Add current Wi-Fi", command=use_current).grid(row=0, column=2, padx=6, sticky="n")
-    row = ttk.Frame(frm)
-    row.grid(row=6, column=0, columnspan=3, sticky="e")
-    btn_detect = ttk.Button(row, text="Detect my portal", command=detect)
-    btn_detect.pack(side="left", padx=4)
-    btn_test = ttk.Button(row, text="Test Login", command=test)
-    btn_test.pack(side="left", padx=4)
-    ttk.Button(row, text="Save", command=save).pack(side="left", padx=4)
-    ttk.Button(row, text="Cancel", command=root.destroy).pack(side="left", padx=4)
+    btn.config(command=connect)
+    root.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()
     return saved["ok"]

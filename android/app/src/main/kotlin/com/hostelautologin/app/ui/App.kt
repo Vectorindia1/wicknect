@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hostelautologin.app.HostelApp
 
-private val TABS = listOf("Dashboard" to "◉", "Setup" to "✎", "Logs" to "☰", "Settings" to "⚙")
+private val TABS = listOf("Home" to "◉", "Connect" to "✎", "Logs" to "☰", "Settings" to "⚙")
 
 @Composable
 fun HostelAutoLoginApp(app: HostelApp) {

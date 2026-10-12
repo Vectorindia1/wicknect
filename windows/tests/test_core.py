@@ -106,7 +106,7 @@ def test_parse_netsh():
 def test_placeholder_is_unconfigured_and_validation():
     import json, pathlib
     cfg = PortalConfig.from_dict(json.loads((pathlib.Path(__file__).parents[1] / "portal.json").read_text()))
-    assert cfg.mode == "auto" and "Detect my portal" in cfg.unconfigured_reason          # shipped default: nothing detected yet
+    assert cfg.mode == "auto" and "click Connect" in cfg.unconfigured_reason          # shipped default: nothing detected yet
     manual = PortalConfig.from_dict({"schema_version": 1, "portal_host": "x", "login": {"path": "/REPLACE_ME"}})
     assert "REPLACE_ME" in manual.unconfigured_reason
     with pytest.raises(ConfigError):
@@ -137,3 +137,17 @@ def test_old_settings_migrate(tmp_path):
     from hostel_autologin.config import Settings
     p = tmp_path / "s.json"; p.write_text('{"ssid": "Old", "username": "u"}')
     assert Settings.load(p).ssids == ["Old"]
+
+
+def test_friendly_messages_have_no_jargon():
+    from hostel_autologin import friendly
+    from hostel_autologin.login_engine import LoginResult, Outcome
+    cases = [LoginResult(Outcome.BAD_CREDENTIALS, "x"), LoginResult(Outcome.CONFIG_ERROR, "Not set up yet: no portal set up yet."),
+             LoginResult(Outcome.CONFIG_ERROR, "refused: host 'x' is not one of the confirmed portal hosts"),
+             LoginResult(Outcome.TRANSIENT, "network error: ConnectionError"), LoginResult(Outcome.SUCCESS, "login submitted"),
+             LoginResult(Outcome.CONFIG_ERROR, "This portal asks for a CAPTCHA/OTP code")]
+    for c in cases:
+        m = friendly.login(c).lower()
+        assert "json" not in m and "origin" not in m and "pin" not in m.split(), m
+    assert "username or password" in friendly.login(cases[0])
+    assert "CAPTCHA" in friendly.login(cases[5])

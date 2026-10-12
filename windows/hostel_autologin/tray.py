@@ -54,8 +54,8 @@ class Tray:
             I(lambda _: "Resume" if self.m.paused else "Pause", self._toggle_pause),
             I("Reconnect Wi-Fi now", lambda: threading.Thread(target=self._reconnect_now, daemon=True).start()),
             I("Open Logs", lambda: os.startfile(log_dir())),
-            I("Edit portal.json", lambda: os.startfile(portal_json_path())),
-            I("Settings…", lambda: threading.Thread(target=self._settings, daemon=True).start()),
+            I("Advanced: open config folder", lambda: os.startfile(portal_json_path().parent)),
+            I("Settings (Wi-Fi & login)…", lambda: threading.Thread(target=self._settings, daemon=True).start()),
             I("Start with Windows", self._toggle_startup, checked=lambda _: startup.is_enabled()),
             I("Exit", self._exit),
         )
