@@ -165,7 +165,7 @@ class PortalDiscovery(base: OkHttpClient, private val settleMillis: Long = 1500,
 
     fun loginAuto(cfg: PortalConfig, user: String, pw: String): LoginResult {
         cfg.unconfiguredReason?.let { return LoginResult(Outcome.CONFIG_ERROR, it) }
-        val pin = { u: HttpUrl -> HostPin.check(u, cfg.portalHost, cfg.scheme); Unit }
+        val pin = { u: HttpUrl -> HostPin.checkAny(u, cfg.origins); Unit }
         return try {
             when (val l = land(pin)) {
                 Landing.Online -> LoginResult(Outcome.SUCCESS, "already online")
@@ -184,7 +184,8 @@ class PortalDiscovery(base: OkHttpClient, private val settleMillis: Long = 1500,
         val form = FormParser.parse(page.html, page.url, cfg.autoUsernameField, cfg.autoPasswordField)
             ?: return LoginResult(Outcome.CONFIG_ERROR, "no login form found on the portal page")
         form.blocked?.let { return LoginResult(Outcome.CONFIG_ERROR, it) }
-        HostPin.check(form.action, cfg.portalHost, cfg.scheme)
+        HostPin.checkAny(form.action, cfg.origins)
+        if (hostOf(form.action) != hostOf(page.url)) throw HostPinException("login form submits to a different host than its page")
         val pairs = form.fields.map { it.name to it.value } +
             listOfNotNull(form.usernameField?.let { it to user }, form.passwordField to pw)
         val req = Request.Builder().header("Referer", page.url.toString())
@@ -195,7 +196,7 @@ class PortalDiscovery(base: OkHttpClient, private val settleMillis: Long = 1500,
             val fb = FormBody.Builder(); pairs.forEach { (k, v) -> fb.add(k, v) }
             req.url(form.action).post(fb.build())
         }
-        AppLog.i("auto login ${form.method} ${cfg.scheme}://${cfg.portalHost}${form.action.encodedPath}")
+        AppLog.i("auto login ${form.method} ${form.action.scheme}://${hostOf(form.action)}${form.action.encodedPath}")
         var resp = http.newCall(req.build()).execute().use { r -> Resp(r.code, r.header("Location"), r.peekBody(MAX_BODY).string(), r.request.url) }
         var hops = 0
         while (resp.isRedirect && hops++ < MAX_HOPS) {

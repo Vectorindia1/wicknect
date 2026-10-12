@@ -22,11 +22,14 @@ class AndroidPlatform(
     private val onState: (State, String) -> Unit,
 ) : Platform {
     private val webViewFallback = WebViewFallback(context, wifi)
+    private val reconnector = WifiReconnector(context)
 
     override fun settings(): Settings = app.store.settings()
     override fun config(): PortalConfig = app.portal.config()
     override fun credentials() = app.store.credentials()
     override fun currentSsid() = wifi.ssid
+    override fun wifiDisconnected() = wifi.network == null
+    override fun reconnectWifi(ssids: List<String>) = try { reconnector.reconnect(ssids) } catch (e: Exception) { AppLog.w("reconnect failed: ${e.javaClass.simpleName}"); false }
     override fun osValidated() = wifi.validated
     override fun probe(): Boolean = wifi.client()?.let { probeInternet(it) } ?: false
 

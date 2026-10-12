@@ -83,7 +83,7 @@ def evil():
 
 
 def disc(p): return PortalDiscovery(probe_url=p.probe, settle_seconds=0)
-def cfg(host): return PortalConfig.from_dict(__import__("json").loads(auto_config_json("Hostel", host, "http", "reg_no", "pwd")))
+def cfg(host, *more): return PortalConfig.from_dict(__import__("json").loads(auto_config_json([(host, "http")] + [(m, "http") for m in more], "reg_no", "pwd")))
 
 
 @pytest.fixture(autouse=True)
@@ -165,3 +165,9 @@ def test_parse_login_form_selects_textarea_and_get_method():
     html = '<form method="GET" action="a"><select name="dom"><option value="x" selected>X<option value="y">Y</select><input name="user"><input type="password" name="pass"></form>'
     f = parse_login_form(html, "http://h/p/")
     assert f.method == "GET" and f.action == "http://h/p/a" and ("dom", "x") in f.fields and f.username_field == "user"
+
+
+def test_two_confirmed_portals_both_allowed(portal):
+    c = cfg("10.9.9.9:81", portal.host)
+    assert c.origins == [("10.9.9.9:81", "http"), (portal.host, "http")]
+    assert disc(portal).login_auto(c, "stud1", "pw123").outcome is Outcome.SUCCESS

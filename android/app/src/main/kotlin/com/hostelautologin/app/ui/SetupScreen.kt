@@ -27,6 +27,7 @@ import com.hostelautologin.app.HostelApp
 import com.hostelautologin.core.DetectResult
 import com.hostelautologin.core.DetectedPortal
 import com.hostelautologin.core.Masker
+import com.hostelautologin.core.Origin
 import com.hostelautologin.core.PortalConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,7 +37,8 @@ import kotlinx.coroutines.withContext
 fun SetupScreen(app: HostelApp) {
     val saved = remember { app.store.settings() }
     val ui by AppState.ui.collectAsState()
-    var ssid by remember { mutableStateOf(saved.ssid) }
+    var ssidsText by remember { mutableStateOf(saved.ssids.joinToString("\n")) }
+    fun ssidList() = ssidsText.split('\n').map { it.trim() }.filter { it.isNotEmpty() }.distinct()
     var user by remember { mutableStateOf(saved.username) }
     var pw by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
@@ -46,7 +48,7 @@ fun SetupScreen(app: HostelApp) {
     val scope = rememberCoroutineScope()
 
     fun persist() {
-        app.store.saveSettings(app.store.settings().copy(ssid = ssid.trim(), username = user.trim()))
+        app.store.saveSettings(app.store.settings().copy(ssids = ssidList(), username = user.trim()))
         if (pw.isNotEmpty()) { app.store.savePassword(pw); pw = "" }
         AutoLoginService.settingsChanged()
     }
@@ -58,7 +60,9 @@ fun SetupScreen(app: HostelApp) {
             text = { Text(p.summary + "\n\nYour username and password will only ever be sent to this address. Only continue if it is your Wi-Fi's login page.") },
             confirmButton = {
                 TextButton(onClick = {
-                    app.portal.save(PortalConfig.autoJson(ssid.trim(), p.host, p.scheme, p.form.usernameField, p.form.passwordField))
+                    val existing = try { app.portal.config().origins } catch (e: Exception) { emptyList() }
+                    val merged = (existing + Origin(p.host, p.scheme)).distinct()          // several networks can use different login pages
+                    app.portal.save(PortalConfig.autoJson(merged, p.form.usernameField, p.form.passwordField))
                     persist(); status = "Portal saved: ${p.scheme}://${p.host}. Now tap Test Login."; found = null
                 }) { Text("Yes, use this portal") }
             },
@@ -67,11 +71,13 @@ fun SetupScreen(app: HostelApp) {
     }
 
     Page {
-        Text("1. Connect to your Wi-Fi (the one that shows a login page).\n2. Enter your own username and password.\n3. Tap Detect my portal, then Test Login.\n\nCredentials are stored encrypted on this phone and only sent to the portal address you confirm.")
-        OutlinedTextField(ssid, { ssid = it }, label = { Text("Wi-Fi name (SSID)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedButton(onClick = { ui.ssid?.let { ssid = it } ?: run { status = "Can't read the Wi-Fi name. Connect to Wi-Fi and allow location permission, or type it." } }) {
-            Text("Use current Wi-Fi" + (ui.ssid?.let { " ($it)" } ?: ""))
-        }
+        Text("1. Add your Wi-Fi names. Networks that use the same username and password (for example the hostel Wi-Fi and the college Wi-Fi) all go in the list.\n2. Enter your own username and password.\n3. While connected to each network, tap Detect my portal, then Test Login.\n\nCredentials are stored encrypted on this phone and only sent to the login-page addresses you confirm.")
+        OutlinedTextField(ssidsText, { ssidsText = it }, label = { Text("Wi-Fi names, one per line") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+        OutlinedButton(onClick = {
+            val cur = ui.ssid
+            if (cur == null) status = "Can't read the Wi-Fi name. Connect to Wi-Fi and allow location permission, or type it."
+            else if (cur !in ssidList()) ssidsText = (ssidList() + cur).joinToString("\n")
+        }) { Text("Add current Wi-Fi" + (ui.ssid?.let { " ($it)" } ?: "")) }
         OutlinedTextField(user, { user = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(pw, { pw = it }, label = { Text(if (hasPw) "Password (blank = keep saved)" else "Password") }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(),

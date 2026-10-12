@@ -28,6 +28,7 @@ fun SettingsScreen(app: HostelApp) {
     val ctx = LocalContext.current
     var exempt by remember { mutableStateOf(BatteryHelp.isExempt(ctx)) }
     var unknownSsid by remember { mutableStateOf(app.store.settings().loginIfSsidUnknown) }
+    var reconnect by remember { mutableStateOf(app.store.settings().autoReconnect) }
     var json by remember { mutableStateOf(app.portal.text()) }
     var msg by remember { mutableStateOf("") }
 
@@ -45,6 +46,19 @@ fun SettingsScreen(app: HostelApp) {
             OutlinedButton(onClick = { BatteryHelp.openAppSettings(ctx) }) { Text("App settings") }
         }
 
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Reconnect Wi-Fi automatically when it drops")
+            Switch(checked = reconnect, onCheckedChange = {
+                reconnect = it
+                app.store.saveSettings(app.store.settings().copy(autoReconnect = it))
+                AutoLoginService.settingsChanged()
+            })
+        }
+        Text(
+            "Android doesn't let apps force a Wi-Fi connection. On Android 10+ the app registers your Wi-Fi names as suggestions (approve the " +
+                "system prompt once) and Android then rejoins them when in range. If your Wi-Fi keeps dropping: in Wi-Fi settings turn off " +
+                "\"Switch to mobile data automatically\" / \"Smart network switch\" / \"Wi-Fi+\", and keep \"Connect automatically\" on for each network.",
+        )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Log in even if the SSID can't be read")
             Switch(checked = unknownSsid, onCheckedChange = {

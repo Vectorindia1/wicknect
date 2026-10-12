@@ -22,15 +22,18 @@ class SecureStore(context: Context) {
     }
 
     fun settings() = Settings(
-        ssid = prefs.getString("ssid", null) ?: "",
+        ssids = (prefs.getString("ssids", null) ?: prefs.getString("ssid", "") ?: "")
+            .split('\n').map { it.trim() }.filter { it.isNotEmpty() }.distinct(),
         username = prefs.getString("username", "") ?: "",
         autoLogin = prefs.getBoolean("auto_login", true),
         loginIfSsidUnknown = prefs.getBoolean("login_if_ssid_unknown", false),
+        autoReconnect = prefs.getBoolean("auto_reconnect", true),
     )
 
     fun saveSettings(s: Settings) {
-        prefs.edit().putString("ssid", s.ssid).putString("username", s.username)
-            .putBoolean("auto_login", s.autoLogin).putBoolean("login_if_ssid_unknown", s.loginIfSsidUnknown).apply()
+        prefs.edit().putString("ssids", s.ssids.joinToString("\n")).putString("username", s.username)
+            .putBoolean("auto_login", s.autoLogin).putBoolean("login_if_ssid_unknown", s.loginIfSsidUnknown)
+            .putBoolean("auto_reconnect", s.autoReconnect).apply()
     }
 
     fun password(): String? = prefs.getString("password", null)?.also { Masker.global.register(it) }

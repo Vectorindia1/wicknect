@@ -12,6 +12,7 @@ from .statemachine import Event, State, StateMachine
 
 log = logging.getLogger(__name__)
 POLL_SECONDS = 15
+RECONNECT_BACKOFF = (10, 30, 60, 120, 300)      # then every 5 minutes
 MIN_CYCLE_GAP = 120          # SPEC: at most one automatic login cycle per 2 minutes
 
 
@@ -22,9 +23,13 @@ class Monitor:
                  keepalive: Callable[[PortalConfig], bool] | None = None,
                  notify: Callable[[str, str], None] = lambda t, m: None,
                  wait: Callable[[float], bool] | None = None, clock: Callable[[], float] = time.monotonic,
-                 verify_delay: float = 1.5, on_state: Callable[[State], None] | None = None):
+                 verify_delay: float = 1.5, on_state: Callable[[State], None] | None = None,
+                 disconnected: Callable[[], bool] = lambda: False,
+                 reconnect: Callable[[list], bool] = lambda ssids: False):
         self.get_settings, self.get_config, self.get_credentials = get_settings, get_config, get_credentials
         self._probe, self._ssid, self._login, self._keepalive = probe, ssid, login, keepalive
+        self._disconnected, self._reconnect = disconnected, reconnect
+        self._reconnect_attempts, self._next_reconnect, self._reconnect_alerted = 0, -1e9, False
         self.notify = notify
         self.stop_event = threading.Event()
         self.wait = wait or self.stop_event.wait
@@ -54,10 +59,15 @@ class Monitor:
     # -- ticks --------------------------------------------------------------------------------
     def tick(self) -> None:
         st = self.get_settings()
+        if self._disconnected():
+            self.current_ssid, self.internet_ok = None, None
+            self.sm.handle(Event.SSID_LOST)
+            self._maybe_reconnect(st)
+            return
+        self._reconnect_attempts, self._reconnect_alerted = 0, False
         ssid = self._ssid()
         self.current_ssid = ssid
-        on_target = (ssid == st.ssid) or (ssid is None and st.login_if_ssid_unknown)
-        if not on_target:
+        if not self._on_target(st, ssid):
             self.internet_ok = None
             self.sm.handle(Event.SSID_LOST)
             return
@@ -75,6 +85,23 @@ class Monitor:
                 and self.clock() - self._last_cycle >= MIN_CYCLE_GAP):
             self.run_login_cycle()
 
+    @staticmethod
+    def _on_target(st: Settings, ssid) -> bool:
+        return (ssid is not None and ssid in st.ssids) or (ssid is None and st.login_if_ssid_unknown)
+
+    def _maybe_reconnect(self, st: Settings) -> None:
+        """Wi-Fi dropped: ask Windows to rejoin one of the user's networks, backing off."""
+        if not st.auto_reconnect or not st.ssids or self.clock() < self._next_reconnect:
+            return
+        ok = self._reconnect(list(st.ssids))
+        self._reconnect_attempts += 1
+        self._next_reconnect = self.clock() + RECONNECT_BACKOFF[min(self._reconnect_attempts - 1, len(RECONNECT_BACKOFF) - 1)]
+        self.last_message = f"Wi-Fi dropped; reconnect attempt {self._reconnect_attempts}" + ("" if ok else " (no saved network to join - connect once manually)")
+        log.info(self.last_message)
+        if self._reconnect_attempts == 8 and not self._reconnect_alerted:
+            self._reconnect_alerted = True
+            self.notify("HostelAutoLogin", "Wi-Fi is still disconnected after several attempts. Check that Wi-Fi is on and in range.")
+
     def _maybe_keepalive(self) -> None:
         cfg = self.get_config()
         ka = cfg.keepalive
@@ -88,9 +115,8 @@ class Monitor:
     def login_now(self) -> None:
         """User-initiated: allowed from FAILURE, ignores pause and the rate guard."""
         st = self.get_settings()
-        ssid = self._ssid()
-        if not (ssid == st.ssid or (ssid is None and st.login_if_ssid_unknown)):
-            self.notify("HostelAutoLogin", f"Not connected to '{st.ssid}'.")
+        if not self._on_target(st, self._ssid()):
+            self.notify("HostelAutoLogin", f"Not connected to one of your Wi-Fi networks ({', '.join(st.ssids)}).")
             return
         self.sm.handle(Event.SSID_MATCH)
         self.sm.handle(Event.USER_LOGIN)

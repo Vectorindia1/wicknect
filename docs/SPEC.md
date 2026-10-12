@@ -49,6 +49,19 @@ FAILURE --SSID changes / user Login Now / settings saved--> CONNECTED
 Paused (user toggle) suspends all transitions out of `LOGIN_NEEDED`; probing/status still update.
 Rate guard: at most one full login cycle (first try + 4 retries) per 2 minutes unless user-initiated.
 
+### 2b. Several SSIDs and Wi-Fi reconnect
+
+- Settings hold a **list** of SSIDs that share one username/password (e.g. hostel, college student, college faculty). The state machine
+  treats any listed SSID as "the" network. Networks outside the list are never touched or logged in to.
+- Auto mode can pin several confirmed portal addresses (`portal_hosts`); each SSID may use a different login page. Credentials go only to
+  a confirmed address, and the form must submit to the same address as the page that served it.
+- **Wi-Fi dropped** (no Wi-Fi connection at all): the app asks the OS to rejoin one of the listed SSIDs, backing off 10s, 30s, 60s, 2m,
+  then every 5m, and notifies once after 8 failed attempts. It never switches away from a network that is connected, even if it
+  isn't in the list (e.g. a phone hotspot).
+  - Windows: `netsh wlan connect` for a saved profile (the network must have been joined once so Windows saved it).
+  - Android 8-9: legacy re-enable of a saved network. Android 10+: apps cannot force a connection; the app registers the SSIDs as
+    network suggestions (one-time system approval) so Android rejoins them itself.
+
 ## 3. Probe
 
 `GET http://www.msftconnecttest.com/connecttest.txt`, no redirects followed, short timeout (5s).

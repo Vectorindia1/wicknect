@@ -50,10 +50,11 @@ def portal_json_path() -> Path:
 
 @dataclass
 class Settings:
-    ssid: str = ""
+    ssids: list = field(default_factory=list)       # all Wi-Fi names that share the same login
     username: str = ""
     auto_login: bool = True
     login_if_ssid_unknown: bool = False
+    auto_reconnect: bool = True
     start_with_windows: bool = False
 
     @classmethod
@@ -63,6 +64,8 @@ class Settings:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return cls()
+        if "ssid" in data and "ssids" not in data:          # settings written by older versions
+            data["ssids"] = [data["ssid"]] if data["ssid"] else []
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
     def save(self, path: Path | None = None) -> None:
@@ -73,6 +76,7 @@ class Settings:
 @dataclass
 class PortalConfig:
     raw: dict
+    origins: list                      # user-confirmed portal addresses [(host, scheme), ...]
     mode: str
     auto_username_field: str | None
     auto_password_field: str | None
@@ -112,7 +116,12 @@ class PortalConfig:
         if ka is not None and not ka.get("path"):
             ka = None
         auto = d.get("auto") or {}
-        return cls(raw=d, mode=mode, auto_username_field=auto.get("username_field") or None,
+        origins = [(host.lower(), scheme)] if host else []
+        for u in d.get("portal_hosts") or []:
+            m = re.match(r"^(https?)://([^/\s]+)", str(u), re.I)
+            if m and (m.group(2).lower(), m.group(1).lower()) not in origins:
+                origins.append((m.group(2).lower(), m.group(1).lower()))
+        return cls(raw=d, origins=origins, mode=mode, auto_username_field=auto.get("username_field") or None,
                    auto_password_field=auto.get("password_field") or None, ssid=str(d.get("ssid", "")), portal_host=host, scheme=scheme, login=login,
                    success=d.get("success") or {}, bad_credentials=d.get("bad_credentials") or {}, keepalive=ka,
                    fallback_type=str((d.get("fallback") or {}).get("type", "none")))
@@ -129,7 +138,7 @@ class PortalConfig:
     @property
     def unconfigured_reason(self) -> str | None:
         if self.mode == "auto":
-            return None if self.portal_host else 'No portal set up yet. Open Settings and click "Detect my portal" while on your Wi-Fi.'
+            return None if self.origins else 'No portal set up yet. Open Settings and click "Detect my portal" while on your Wi-Fi.'
         blob = json.dumps(self.login)
         if "REPLACE_ME" in blob:
             return "portal.json is still the placeholder (contains REPLACE_ME). Fill it in from your captured login."
@@ -138,7 +147,9 @@ class PortalConfig:
         return None
 
 
-def auto_config_json(ssid: str, host: str, scheme: str, username_field: str | None, password_field: str | None) -> str:
-    """portal.json content for an auto-detected portal (written after the user confirms the host)."""
-    return json.dumps({"schema_version": 1, "mode": "auto", "ssid": ssid, "portal_host": host, "scheme": scheme,
+def auto_config_json(origins: list, username_field: str | None, password_field: str | None) -> str:
+    """portal.json content for auto-detected portals (written after the user confirms the host(s))."""
+    first = origins[0] if origins else ("", "http")
+    return json.dumps({"schema_version": 1, "mode": "auto", "portal_host": first[0], "scheme": first[1],
+                       "portal_hosts": [f"{sc}://{h}" for h, sc in origins],
                        "auto": {"username_field": username_field or "", "password_field": password_field or ""}}, indent=2)

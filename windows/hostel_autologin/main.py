@@ -13,7 +13,7 @@ from .login_engine import LoginEngine
 from .masking import MaskingFilter
 from .monitor import Monitor
 from .probe import probe
-from .wifi import current_ssid
+from .wifi import current_ssid, reconnect_wifi, wifi_disconnected
 
 LOCK_PORT = 47653
 
@@ -86,6 +86,7 @@ def main(argv=None) -> int:
     mon = Monitor(get_settings=lambda: settings, get_config=get_config, get_credentials=get_credentials,
                   probe=probe, ssid=current_ssid, login=do_login,
                   keepalive=lambda cfg: LoginEngine(cfg).keepalive(),
+                  disconnected=wifi_disconnected, reconnect=reconnect_wifi,
                   notify=lambda t, m: holder["tray"].notify(t, m))
     tray = holder["tray"] = Tray(mon, settings, fallback.get_browser_fallback())
     mon.start()

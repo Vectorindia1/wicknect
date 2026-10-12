@@ -23,18 +23,31 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
     root.resizable(False, False)
     frm = ttk.Frame(root, padding=14)
     frm.grid()
-    v_ssid, v_user, v_pw = tk.StringVar(value=settings.ssid), tk.StringVar(value=settings.username), tk.StringVar()
+    v_user, v_pw = tk.StringVar(value=settings.username), tk.StringVar()
     v_auto = tk.BooleanVar(value=settings.auto_login)
     has_pw = bool(settings.username and creds.get_password(settings.username))
 
-    for i, (label, var, show) in enumerate([("Wi-Fi SSID", v_ssid, ""), ("Username", v_user, ""), ("Password", v_pw, "•")]):
+    ttk.Label(frm, text="Wi-Fi names\n(one per line)").grid(row=0, column=0, sticky="nw", pady=4)
+    t_ssids = tk.Text(frm, width=34, height=3)
+    t_ssids.insert("1.0", "\n".join(settings.ssids))
+    t_ssids.grid(row=0, column=1, pady=4)
+    for i, (label, var, show) in enumerate([("Username", v_user, ""), ("Password", v_pw, "•")], start=1):
         ttk.Label(frm, text=label).grid(row=i, column=0, sticky="w", pady=4)
         ttk.Entry(frm, textvariable=var, width=34, show=show).grid(row=i, column=1, pady=4)
     ttk.Label(frm, text="(leave blank to keep the saved password)" if has_pw else "Stored in Windows Credential Manager",
               foreground="#666").grid(row=3, column=1, sticky="w")
     ttk.Checkbutton(frm, text="Log in automatically", variable=v_auto).grid(row=4, column=1, sticky="w", pady=4)
+    v_recon = tk.BooleanVar(value=settings.auto_reconnect)
+    ttk.Checkbutton(frm, text="Reconnect Wi-Fi automatically when it drops", variable=v_recon).grid(row=4, column=1, sticky="e", pady=4)
     status = ttk.Label(frm, text="", wraplength=320, justify="left")
     status.grid(row=5, column=0, columnspan=3, sticky="w", pady=6)
+
+    def ssid_list() -> list[str]:
+        out: list[str] = []
+        for line in t_ssids.get("1.0", "end").splitlines():
+            if line.strip() and line.strip() not in out:
+                out.append(line.strip())
+        return out
 
     def password() -> str:
         return v_pw.get() or (creds.get_password(v_user.get().strip()) or "")
@@ -58,9 +71,9 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
         threading.Thread(target=work, daemon=True).start()
 
     def save():
-        user, ssid = v_user.get().strip(), v_ssid.get().strip()
-        if not ssid or not user:
-            messagebox.showwarning("HostelAutoLogin", "SSID and username are required.", parent=root)
+        user, ssids = v_user.get().strip(), ssid_list()
+        if not ssids or not user:
+            messagebox.showwarning("HostelAutoLogin", "At least one Wi-Fi name and a username are required.", parent=root)
             return
         pw = v_pw.get()
         if pw:
@@ -70,7 +83,7 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
             return
         if settings.username and settings.username != user:
             creds.delete_password(settings.username)
-        settings.ssid, settings.username, settings.auto_login = ssid, user, v_auto.get()
+        settings.ssids, settings.username, settings.auto_login, settings.auto_reconnect = ssids, user, v_auto.get(), v_recon.get()
         settings.save()
         saved["ok"] = True
         if on_saved:
@@ -80,7 +93,8 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
     def use_current():
         cur = current_ssid()
         if cur:
-            v_ssid.set(cur)
+            if cur not in ssid_list():
+                t_ssids.insert("end", ("\n" if t_ssids.get("1.0", "end").strip() else "") + cur)
         else:
             status.config(text="Can't read the Wi-Fi name (not connected, or Windows needs Location access). Type it instead.")
 
@@ -102,12 +116,16 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
                 p = res.portal
                 if messagebox.askyesno("HostelAutoLogin", p.summary + f"\n\nSend your username and password to {p.host}?\n"
                                        "Only continue if this is your Wi-Fi's login page.", parent=root):
-                    portal_json_path().write_text(auto_config_json(v_ssid.get().strip(), p.host, p.scheme,
-                                                                   p.form.username_field, p.form.password_field), encoding="utf-8")
+                    try:                      # several networks may use different login pages: keep every confirmed one
+                        known = PortalConfig.load(portal_json_path()).origins
+                    except ConfigError:
+                        known = []
+                    origins = known + [(p.host.lower(), p.scheme)] if (p.host.lower(), p.scheme) not in known else known
+                    portal_json_path().write_text(auto_config_json(origins, p.form.username_field, p.form.password_field), encoding="utf-8")
                     status.config(text=f"Portal saved: {p.scheme}://{p.host}. Now click Test Login.")
         threading.Thread(target=work, daemon=True).start()
 
-    ttk.Button(frm, text="Use current Wi-Fi", command=use_current).grid(row=0, column=2, padx=6)
+    ttk.Button(frm, text="Add current Wi-Fi", command=use_current).grid(row=0, column=2, padx=6, sticky="n")
     row = ttk.Frame(frm)
     row.grid(row=6, column=0, columnspan=3, sticky="e")
     btn_detect = ttk.Button(row, text="Detect my portal", command=detect)

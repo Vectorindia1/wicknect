@@ -4,10 +4,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 
 data class Settings(
-    val ssid: String = "",
+    /** All Wi-Fi names that share the same login (e.g. hostel, college student, college faculty). */
+    val ssids: List<String> = emptyList(),
     val username: String = "",
     val autoLogin: Boolean = true,
     val loginIfSsidUnknown: Boolean = false,
+    val autoReconnect: Boolean = true,
 )
 
 /** Platform hooks. Android implements these on top of ConnectivityManager. */
@@ -16,6 +18,10 @@ interface Platform {
     fun config(): PortalConfig                       // throws ConfigException
     fun credentials(): Pair<String, String>?
     fun currentSsid(): String?
+    /** True when there is no Wi-Fi connection at all (as opposed to an unreadable SSID). */
+    fun wifiDisconnected(): Boolean = false
+    /** Ask the OS to join one of [ssids]; true if a request was made. Best effort, platform-specific. */
+    fun reconnectWifi(ssids: List<String>): Boolean = false
     /** OS verdict for the Wi-Fi network (NET_CAPABILITY_VALIDATED && !CAPTIVE_PORTAL); null = unknown / no Wi-Fi. */
     fun osValidated(): Boolean?
     fun probe(): Boolean                             // HTTP probe over the Wi-Fi network
@@ -45,10 +51,16 @@ class Controller(
     val sm = StateMachine { _, new -> p.onStateChanged(new, message) }
     val state get() = sm.state
 
-    private fun onTarget(st: Settings, ssid: String?) = ssid == st.ssid || (ssid == null && st.loginIfSsidUnknown)
+    private fun onTarget(st: Settings, ssid: String?) = (ssid != null && ssid in st.ssids) || (ssid == null && st.loginIfSsidUnknown)
+
+    private var reconnectAttempts = 0
+    private var nextReconnectAt = Long.MIN_VALUE / 2
+    private var reconnectAlerted = false
 
     suspend fun tick() {
         val st = p.settings()
+        if (p.wifiDisconnected()) { internetOk = null; sm.handle(Event.SSID_LOST); maybeReconnect(st); return }
+        reconnectAttempts = 0; reconnectAlerted = false
         if (!onTarget(st, p.currentSsid())) { internetOk = null; sm.handle(Event.SSID_LOST); return }
         sm.handle(Event.SSID_MATCH)
         // "Do nothing if the network is validated" - trust the OS verdict, otherwise confirm with our own probe.
@@ -58,6 +70,20 @@ class Controller(
         if (sm.state == State.FAILURE) return                    // wait for user action; no endless attempts
         sm.handle(Event.PROBE_FAIL)
         if (sm.state == State.LOGIN_NEEDED && st.autoLogin && !paused && clockSeconds() - lastCycle >= MIN_CYCLE_GAP) runLoginCycle(false)
+    }
+
+    /** Wi-Fi dropped: ask the OS to rejoin one of the user's networks, backing off (10s, 30s, 60s, 2m, then every 5m). */
+    private fun maybeReconnect(st: Settings) {
+        if (!st.autoReconnect || st.ssids.isEmpty() || clockSeconds() < nextReconnectAt) return
+        val requested = p.reconnectWifi(st.ssids)
+        reconnectAttempts++
+        nextReconnectAt = clockSeconds() + RECONNECT_BACKOFF[minOf(reconnectAttempts - 1, RECONNECT_BACKOFF.size - 1)]
+        message = "Wi-Fi dropped; reconnect attempt $reconnectAttempts" + if (requested) "" else " (not possible on this device - reconnect manually)"
+        AppLog.i(message)
+        if (reconnectAttempts == 8 && !reconnectAlerted) {
+            reconnectAlerted = true
+            p.notifyFailure("Wi-Fi is still disconnected after several attempts. Check that your Wi-Fi is on and in range.")
+        }
     }
 
     private fun maybeKeepalive() {
@@ -70,7 +96,7 @@ class Controller(
 
     suspend fun loginNow() {
         val st = p.settings()
-        if (!onTarget(st, p.currentSsid())) { p.notifyFailure("Not connected to '${st.ssid}'."); return }
+        if (!onTarget(st, p.currentSsid())) { p.notifyFailure("Not connected to one of your Wi-Fi networks (${st.ssids.joinToString()})."); return }
         sm.handle(Event.SSID_MATCH); sm.handle(Event.USER_LOGIN)
         runLoginCycle(true)
     }
@@ -130,5 +156,8 @@ class Controller(
         return fail("gave up after ${BACKOFF_SECONDS.size + 1} attempts: $last", Event.LOGIN_EXHAUSTED)
     }
 
-    companion object { const val MIN_CYCLE_GAP = 120L }
+    companion object {
+        const val MIN_CYCLE_GAP = 120L
+        val RECONNECT_BACKOFF = listOf(10L, 30L, 60L, 120L, 300L)
+    }
 }

@@ -5,6 +5,9 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 class HostPinException(message: String) : Exception(message)
 
+/** A user-confirmed portal address: host[:port] + scheme. */
+data class Origin(val host: String, val scheme: String)
+
 /** Credentials may only go to exactly (scheme, host, port) of the configured portal. */
 object HostPin {
     private fun split(portalHost: String): Pair<String, Int?> {
@@ -29,6 +32,14 @@ object HostPin {
         val wantPort = port ?: HttpUrl.defaultPort(scheme)
         if (u.port != wantPort) throw HostPinException("port does not match pinned portal host")
         return u
+    }
+
+    /** Like [check] but accepts any of the user-confirmed origins (e.g. the hostel and the college portal). */
+    fun checkAny(u: HttpUrl, origins: List<Origin>): HttpUrl {
+        if (origins.isEmpty()) throw HostPinException("no portal host has been confirmed yet")
+        var last: HostPinException? = null
+        for (o in origins) try { return check(u, o.host, o.scheme) } catch (e: HostPinException) { last = e }
+        throw HostPinException("host '${u.host}' is not one of the confirmed portal hosts")
     }
 
     /** Resolve a Location header against the current URL, then pin-check the result. */

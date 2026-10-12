@@ -36,3 +36,15 @@ def check_url(url: str, portal_host: str, scheme: str) -> str:
 
 def resolve_redirect(current_url: str, location: str, portal_host: str, scheme: str) -> str:
     return check_url(urljoin(current_url, location), portal_host, scheme)
+
+
+def check_any(url: str, origins) -> str:
+    """Accept the URL if it matches any user-confirmed (host, scheme) origin."""
+    if not origins:
+        raise HostPinError("no portal host has been confirmed yet")
+    for host, scheme in origins:
+        try:
+            return check_url(url, host, scheme)
+        except HostPinError:
+            continue
+    raise HostPinError(f"host '{urlsplit(url).hostname}' is not one of the confirmed portal hosts")

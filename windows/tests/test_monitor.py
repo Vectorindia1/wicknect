@@ -9,12 +9,14 @@ class Env:
     def __init__(self, results, probes=None, ssid="University_Hostel"):
         self.results = list(results); self.probes = list(probes or []); self.default_probe = False
         self.waits = []; self.notes = []; self.logins = 0; self.ssid = ssid; self.t = 0.0
-        self.m = Monitor(get_settings=lambda: Settings(ssid="University_Hostel", username="u"),
+        self.disconnected = False; self.reconnects = []
+        self.m = Monitor(get_settings=lambda: Settings(ssids=["University_Hostel", "GDGU student"], username="u"),
                          get_config=lambda: make_cfg("172.16.16.16"), get_credentials=lambda: ("u", "p"),
                          probe=self.probe, ssid=lambda: self.ssid, login=self.login,
                          keepalive=lambda c: self.notes.append("ka") or True,
                          notify=lambda t, m: self.notes.append((t, m)), wait=self.wait, clock=lambda: self.t,
-                         verify_delay=0)
+                         verify_delay=0, disconnected=lambda: self.disconnected,
+                         reconnect=lambda ss: self.reconnects.append(ss) or True)
 
     def probe(self): return self.probes.pop(0) if self.probes else self.default_probe
     def wait(self, s): self.waits.append(s); return False
@@ -105,3 +107,28 @@ def test_login_now_recovers_from_failure():
 def test_missing_credentials_fails_without_login():
     e = Env([S]); e.m.get_credentials = lambda: None
     e.m.tick(); assert e.logins == 0 and e.m.state is State.FAILURE
+
+
+def test_any_configured_ssid_accepted():
+    e = Env([S], probes=[False, True], ssid="GDGU student")
+    e.m.tick()
+    assert e.m.state is State.VALIDATED
+
+
+def test_reconnects_when_wifi_drops_with_backoff():
+    e = Env([]); e.disconnected = True
+    e.m.tick(); assert e.reconnects == [["University_Hostel", "GDGU student"]]
+    e.t += 5; e.m.tick(); assert len(e.reconnects) == 1          # too soon
+    e.t += 10; e.m.tick(); assert len(e.reconnects) == 2
+    e.t += 30; e.m.tick(); assert len(e.reconnects) == 3
+    for _ in range(10):
+        e.t += 301; e.m.tick()
+    assert sum("still disconnected" in n[1] for n in e.notes if isinstance(n, tuple)) == 1
+    e.disconnected = False; e.default_probe = True; e.t += 1; e.m.tick()
+    assert e.m.state is State.VALIDATED
+
+
+def test_other_network_left_alone():
+    e = Env([], ssid="Phone hotspot")
+    e.m.tick()
+    assert e.reconnects == [] and e.m.state is State.OFFLINE

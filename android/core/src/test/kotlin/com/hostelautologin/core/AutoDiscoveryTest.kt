@@ -52,7 +52,7 @@ class AutoDiscoveryTest {
     private fun host() = "${portal.hostName}:${portal.port}"
     private fun probe() = portal.url("/connecttest.txt").toString()
     private fun disc() = PortalDiscovery(OkHttpClient(), settleMillis = 0, probeUrl = probe())
-    private fun cfg(h: String = host()) = PortalConfig.parse(PortalConfig.autoJson("Hostel", h, "http", "reg_no", "pwd"))
+    private fun cfg(h: String = host()) = PortalConfig.parse(PortalConfig.autoJson(listOf(Origin(h, "http")), "reg_no", "pwd"))
 
     @Test fun detectFindsFormAndWarns() {
         val r = disc().detect()
@@ -129,5 +129,11 @@ class AutoDiscoveryTest {
         disc().loginAuto(cfg(), "stud1", "pw123"); down(); up()
         disc().loginAuto(cfg(), "stud1", "wrongPw-zzz")
         assertTrue(lines.isNotEmpty() && lines.none { "pw123" in it || "wrongPw-zzz" in it })
+    }
+
+    @Test fun twoConfirmedPortalsBothAllowed() {
+        val two = PortalConfig.parse(PortalConfig.autoJson(listOf(Origin("10.9.9.9:81", "http"), Origin(host(), "http")), "reg_no", "pwd"))
+        assertEquals(Outcome.SUCCESS, disc().loginAuto(two, "stud1", "pw123").outcome)
+        assertEquals(listOf(Origin("10.9.9.9:81", "http"), Origin(host(), "http")), two.origins)
     }
 }

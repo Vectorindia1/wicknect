@@ -31,6 +31,8 @@ data class PortalConfig(
     val autoUsernameField: String?,
     val autoPasswordField: String?,
     val ssid: String,
+    /** User-confirmed portal addresses (auto mode can have several, e.g. hostel + college). */
+    val origins: List<Origin>,
     val portalHost: String,
     val scheme: String,
     val loginPath: String,
@@ -55,7 +57,7 @@ data class PortalConfig(
     /** Non-null when the file is still the placeholder / draft; no network call may be made. */
     val unconfiguredReason: String?
         get() {
-            if (mode == "auto") return if (portalHost.isEmpty()) "No portal set up yet. Open Setup and tap \"Detect my portal\" while on your Wi-Fi." else null
+            if (mode == "auto") return if (origins.isEmpty()) "No portal set up yet. Open Setup and tap \"Detect my portal\" while on your Wi-Fi." else null
             val blob = listOf(loginPath, headers.toString(), fields.toString(), preFetch?.path.orEmpty()).joinToString(" ")
             if ("REPLACE_ME" in blob) return "portal.json is still the placeholder (contains REPLACE_ME). Edit it in Settings."
             if (Regex("""\{\{\s*REVIEW""").containsMatchIn(blob)) return "portal.json contains unresolved {{REVIEW:...}} fields."
@@ -66,10 +68,12 @@ data class PortalConfig(
         private val json = Json { ignoreUnknownKeys = true; isLenient = false }
 
         /** JSON for an auto-detected portal (what the Setup screen saves after the user confirms the host). */
-        fun autoJson(ssid: String, host: String, scheme: String, userField: String?, passField: String?): String {
+        fun autoJson(origins: List<Origin>, userField: String?, passField: String?): String {
+            val first = origins.firstOrNull()
             val o = JsonObject(mapOf(
-                "schema_version" to JsonPrimitive(1), "mode" to JsonPrimitive("auto"), "ssid" to JsonPrimitive(ssid),
-                "portal_host" to JsonPrimitive(host), "scheme" to JsonPrimitive(scheme),
+                "schema_version" to JsonPrimitive(1), "mode" to JsonPrimitive("auto"),
+                "portal_host" to JsonPrimitive(first?.host ?: ""), "scheme" to JsonPrimitive(first?.scheme ?: "http"),
+                "portal_hosts" to JsonArray(origins.map { JsonPrimitive("${it.scheme}://${it.host}") }),
                 "auto" to JsonObject(mapOf("username_field" to JsonPrimitive(userField ?: ""), "password_field" to JsonPrimitive(passField ?: ""))),
             ))
             return Json { prettyPrint = true }.encodeToString(JsonObject.serializer(), o)
@@ -103,10 +107,15 @@ data class PortalConfig(
             val wv = fb["webview"] as? JsonObject
             val jp = success["json_path_equals"] as? JsonObject
             val auto = d.obj("auto")
+            val extra = d.strs("portal_hosts").mapNotNull { u ->
+                val m = Regex("^(https?)://([^/\\s]+)", RegexOption.IGNORE_CASE).find(u) ?: return@mapNotNull null
+                Origin(m.groupValues[2].lowercase(), m.groupValues[1].lowercase())
+            }
+            val origins = ((if (host.isNotEmpty()) listOf(Origin(host.lowercase(), scheme)) else emptyList()) + extra).distinct()
             return PortalConfig(
                 mode = mode, autoUsernameField = auto.str("username_field").ifEmpty { null },
                 autoPasswordField = auto.str("password_field").ifEmpty { null },
-                ssid = d.str("ssid", ""), portalHost = host, scheme = scheme,
+                ssid = d.str("ssid", ""), origins = origins, portalHost = host, scheme = scheme,
                 loginPath = path, loginMethod = method, contentType = ctype,
                 headers = login.strMap("headers").filterKeys { it.lowercase() !in FORBIDDEN_HEADERS },
                 fields = login.strMap("fields"),

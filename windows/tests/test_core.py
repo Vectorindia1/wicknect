@@ -3,7 +3,8 @@ import pytest
 from hostel_autologin.masking import Masker, MaskingFilter
 from hostel_autologin.pinning import HostPinError, check_url, resolve_redirect
 from hostel_autologin.statemachine import Event, State, StateMachine
-from hostel_autologin.wifi import parse_netsh
+from hostel_autologin.wifi import parse_netsh, parse_disconnected, parse_profiles, pick_profiles
+from hostel_autologin.pinning import check_any
 from hostel_autologin.config import BACKOFF, PortalConfig, ConfigError
 
 
@@ -112,3 +113,27 @@ def test_placeholder_is_unconfigured_and_validation():
         PortalConfig.from_dict({"schema_version": 1, "portal_host": "http://x/", "login": {"path": "/a"}})
     c = PortalConfig.from_dict({"schema_version": 1, "portal_host": "x", "login": {"path": "/a", "headers": {"Cookie": "a=b", "X": "1"}}})
     assert c.login["headers"] == {"X": "1"}
+
+
+def test_check_any_origin():
+    os_ = [("172.16.16.16", "http"), ("10.1.1.1:8090", "http")]
+    check_any("http://10.1.1.1:8090/x", os_)
+    with pytest.raises(HostPinError):
+        check_any("http://10.1.1.1/x", os_)
+    with pytest.raises(HostPinError):
+        check_any("http://172.16.16.16/x", [])
+
+
+def test_wifi_state_and_profiles():
+    out = "    Name : Wi-Fi\n    State : disconnected\n"
+    assert parse_disconnected(out) is True
+    assert parse_disconnected("    Name : Wi-Fi\n    State : connected\n    SSID : x\n") is False
+    assert parse_disconnected("There is no wireless interface on the system.") is False
+    profs = parse_profiles("    All User Profile     : University_Hostel\n    All User Profile     : University_Hostel 2\n    All User Profile     : Home\n    All User Profile     : GDGU student\n")
+    assert pick_profiles(profs, ["GDGU student", "University_Hostel"]) == ["GDGU student", "University_Hostel", "University_Hostel 2"]
+
+
+def test_old_settings_migrate(tmp_path):
+    from hostel_autologin.config import Settings
+    p = tmp_path / "s.json"; p.write_text('{"ssid": "Old", "username": "u"}')
+    assert Settings.load(p).ssids == ["Old"]

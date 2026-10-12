@@ -16,7 +16,7 @@ import requests
 
 from .config import PROBE_BODY, PROBE_URL
 from .login_engine import LoginResult, Outcome
-from .pinning import HostPinError, check_url
+from .pinning import HostPinError, check_any
 
 log = logging.getLogger(__name__)
 MAX_HOPS = 6
@@ -243,7 +243,7 @@ class PortalDiscovery:
             return LoginResult(Outcome.CONFIG_ERROR, reason)
 
         def pin(u):
-            check_url(u, cfg.portal_host, cfg.scheme)
+            check_any(u, cfg.origins)
 
         s = self._session()
         try:
@@ -267,12 +267,14 @@ class PortalDiscovery:
             return LoginResult(Outcome.CONFIG_ERROR, "no login form found on the portal page")
         if form.blocked:
             return LoginResult(Outcome.CONFIG_ERROR, form.blocked)
-        check_url(form.action, cfg.portal_host, cfg.scheme)
+        check_any(form.action, cfg.origins)
+        if host_of(form.action) != host_of(page_url):
+            raise HostPinError("login form submits to a different host than its page")
         pairs = list(form.fields)
         if form.username_field:
             pairs.append((form.username_field, user))
         pairs.append((form.password_field, pw))
-        log.info("auto login %s %s://%s%s", form.method, cfg.scheme, cfg.portal_host, urlsplit(form.action).path)
+        log.info("auto login %s %s://%s%s", form.method, urlsplit(form.action).scheme, host_of(form.action), urlsplit(form.action).path)
         hdr = {"Referer": page_url}
         if form.method == "GET":
             r = s.get(form.action, params=pairs, headers=hdr, timeout=TIMEOUT, allow_redirects=False)

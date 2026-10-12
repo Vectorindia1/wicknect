@@ -7,7 +7,10 @@ private class Fake(results: List<LoginResult>, probes: List<Boolean> = emptyList
     val results = results.toMutableList(); val probes = probes.toMutableList()
     var defaultProbe = false; var logins = 0; val notes = mutableListOf<String>(); var ka = 0; var os: Boolean? = null
     var creds: Pair<String, String>? = "u" to "p"
-    override fun settings() = Settings(ssid = "University_Hostel", username = "u")
+    var disconnected = false; val reconnects = mutableListOf<List<String>>()
+    override fun wifiDisconnected() = disconnected
+    override fun reconnectWifi(ssids: List<String>): Boolean { reconnects += ssids; return true }
+    override fun settings() = Settings(ssids = listOf("University_Hostel", "GDGU student"), username = "u")
     override fun config() = PortalConfig.parse("""{"schema_version":1,"portal_host":"172.16.16.16","login":{"path":"/login"},"keepalive":{"path":"/ka","interval_seconds":30}}""")
     override fun credentials() = creds
     override fun currentSsid() = ssid
@@ -96,5 +99,26 @@ class ControllerTest {
     @Test fun missingCredentialsFails() = runBlocking<Unit> {
         val f = Fake(listOf(S)); f.creds = null; val c = ctl(f)
         c.tick(); assertEquals(0, f.logins); assertEquals(State.FAILURE, c.state)
+    }
+
+    @Test fun anyConfiguredSsidIsAccepted() = runBlocking<Unit> {
+        val f = Fake(listOf(S), listOf(false, true), ssid = "GDGU student"); val c = ctl(f)
+        c.tick(); assertEquals(State.VALIDATED, c.state)
+    }
+
+    @Test fun reconnectsWhenWifiDropsWithBackoff() = runBlocking<Unit> {
+        val f = Fake(emptyList()); f.disconnected = true; val c = ctl(f)
+        c.tick(); assertEquals(1, f.reconnects.size); assertEquals(listOf("University_Hostel", "GDGU student"), f.reconnects[0])
+        now += 5; c.tick(); assertEquals(1, f.reconnects.size)              // too soon
+        now += 10; c.tick(); assertEquals(2, f.reconnects.size)             // 10s after the first
+        now += 30; c.tick(); assertEquals(3, f.reconnects.size)
+        repeat(10) { now += 301; c.tick() }
+        assertTrue(f.notes.any { "still disconnected" in it }); assertEquals(1, f.notes.size)
+        f.disconnected = false; f.defaultProbe = true; now += 1; c.tick(); assertEquals(State.VALIDATED, c.state)
+    }
+
+    @Test fun leavesOtherNetworksAlone() = runBlocking<Unit> {
+        val f = Fake(emptyList(), ssid = "Phone hotspot"); val c = ctl(f)
+        c.tick(); assertTrue(f.reconnects.isEmpty()); assertEquals(State.OFFLINE, c.state)
     }
 }

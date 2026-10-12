@@ -52,12 +52,18 @@ class Tray:
             I(lambda _: self.m.status_text[:80], None, enabled=False),
             I("Login Now", lambda: threading.Thread(target=self.m.login_now, daemon=True).start()),
             I(lambda _: "Resume" if self.m.paused else "Pause", self._toggle_pause),
+            I("Reconnect Wi-Fi now", lambda: threading.Thread(target=self._reconnect_now, daemon=True).start()),
             I("Open Logs", lambda: os.startfile(log_dir())),
             I("Edit portal.json", lambda: os.startfile(portal_json_path())),
             I("Settings…", lambda: threading.Thread(target=self._settings, daemon=True).start()),
             I("Start with Windows", self._toggle_startup, checked=lambda _: startup.is_enabled()),
             I("Exit", self._exit),
         )
+
+    def _reconnect_now(self):
+        from .wifi import reconnect_wifi
+        ok = reconnect_wifi(list(self.settings.ssids))
+        self.notify("HostelAutoLogin", "Asked Windows to reconnect." if ok else "No saved Wi-Fi network to join. Connect to it once manually in Windows first.")
 
     def _toggle_pause(self):
         self.m.paused = not self.m.paused

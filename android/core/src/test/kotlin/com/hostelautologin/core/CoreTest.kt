@@ -1,5 +1,6 @@
 package com.hostelautologin.core
 
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import kotlin.test.*
 
 class CoreTest {
@@ -56,6 +57,13 @@ class CoreTest {
         assertEquals("/done", HostPin.resolveRedirect(cur, "/done", "172.16.16.16", "http").encodedPath)
         assertFailsWith<HostPinException> { HostPin.resolveRedirect(cur, "http://evil.com/", "172.16.16.16", "http") }
         assertFailsWith<HostPinException> { HostPin.resolveRedirect(cur, "//evil.com/", "172.16.16.16", "http") }
+    }
+
+    @Test fun pinAnyOrigin() {
+        val os = listOf(Origin("172.16.16.16", "http"), Origin("10.1.1.1:8090", "http"))
+        HostPin.checkAny("http://10.1.1.1:8090/x".toHttpUrl(), os)
+        assertFailsWith<HostPinException> { HostPin.checkAny("http://10.1.1.1/x".toHttpUrl(), os) }
+        assertFailsWith<HostPinException> { HostPin.checkAny("http://172.16.16.16/x".toHttpUrl(), emptyList()) }
     }
 
     @Test fun placeholderConfig() {
