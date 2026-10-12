@@ -106,6 +106,28 @@ Rules: unknown keys are ignored; `login.path` containing `REPLACE_ME` => state `
 "portal.json not configured" (never a network call). Placeholder values come from secure storage at request time only;
 they are never written to logs or the config file.
 
+### 4b. Automatic mode (`"mode": "auto"`, the default)
+
+For a generic install nobody hand-writes a login request. The app instead does what a browser does:
+
+1. **Detect** (user-initiated, "Detect my portal", while on the Wi-Fi): `GET` the probe URL without following redirects, follow the
+   captive-portal redirect chain (HTTP 3xx, `<meta refresh>`, simple `location=` scripts, max 6 hops, GET only, no credentials),
+   and parse the HTML `<form>` that contains a password input. Show the user the portal address, the fields found and any
+   warnings (plain HTTP, ticked terms checkbox). On confirmation save `portal_host`/`scheme` (this is the pin) and the field names.
+2. **Login** (automatic): repeat the redirect walk, but every hop and the form action must match the pinned host:port/scheme.
+   Re-read the live form (so per-session hidden tokens are current), submit the browser-equivalent field set with the user's
+   credentials in the username/password fields. After the submit, redirects are followed only while they stay on the pinned host.
+3. **Outcome**: the login form shown again => `BAD_CREDENTIALS` (after one probe in case the internet is actually up);
+   5xx/network error => `TRANSIENT`; otherwise `SUCCESS` and the normal verification probe decides.
+   A form that needs CAPTCHA/OTP, has no form (JS-only portal), or submits to another host is refused with an explanation.
+4. Two consecutive "accepted but still offline" results stop the cycle (FAILURE) to avoid locking the user's account.
+
+```jsonc
+{ "schema_version": 1, "mode": "auto", "ssid": "MyWifi", "portal_host": "192.0.2.1:8090", "scheme": "http",
+  "auto": { "username_field": "reg_no", "password_field": "pwd" } }
+```
+`portal_host` empty = nothing detected yet; no login is attempted. Manual mode (above) remains for portals auto mode cannot handle.
+
 ## 5. Result classification
 
 | Outcome | Condition | Action |

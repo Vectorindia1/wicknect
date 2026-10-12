@@ -50,7 +50,7 @@ def portal_json_path() -> Path:
 
 @dataclass
 class Settings:
-    ssid: str = "University_Hostel"
+    ssid: str = ""
     username: str = ""
     auto_login: bool = True
     login_if_ssid_unknown: bool = False
@@ -73,6 +73,9 @@ class Settings:
 @dataclass
 class PortalConfig:
     raw: dict
+    mode: str
+    auto_username_field: str | None
+    auto_password_field: str | None
     ssid: str
     portal_host: str
     scheme: str
@@ -86,15 +89,18 @@ class PortalConfig:
     def from_dict(cls, d: dict) -> "PortalConfig":
         if not isinstance(d, dict) or d.get("schema_version") != 1:
             raise ConfigError("portal.json: unsupported or missing schema_version (expected 1)")
+        mode = str(d.get("mode", "manual")).lower()
+        if mode not in ("manual", "auto"):
+            raise ConfigError("portal.json: mode must be manual or auto")
         host = str(d.get("portal_host", "")).strip()
-        if not host or "/" in host or "@" in host or "://" in host:
+        if (not host and mode == "manual") or "/" in host or "@" in host or "://" in host:
             raise ConfigError("portal.json: portal_host must be a bare host or host:port")
         scheme = str(d.get("scheme", "http")).lower()
         if scheme not in ("http", "https"):
             raise ConfigError("portal.json: scheme must be http or https")
         login = d.get("login") or {}
         path = str(login.get("path", ""))
-        if not path:
+        if not path and mode == "manual":
             raise ConfigError("portal.json: login.path is required")
         if str(login.get("method", "POST")).upper() not in ("GET", "POST"):
             raise ConfigError("portal.json: login.method must be GET or POST")
@@ -105,7 +111,9 @@ class PortalConfig:
         ka = d.get("keepalive")
         if ka is not None and not ka.get("path"):
             ka = None
-        return cls(raw=d, ssid=str(d.get("ssid", "University_Hostel")), portal_host=host, scheme=scheme, login=login,
+        auto = d.get("auto") or {}
+        return cls(raw=d, mode=mode, auto_username_field=auto.get("username_field") or None,
+                   auto_password_field=auto.get("password_field") or None, ssid=str(d.get("ssid", "")), portal_host=host, scheme=scheme, login=login,
                    success=d.get("success") or {}, bad_credentials=d.get("bad_credentials") or {}, keepalive=ka,
                    fallback_type=str((d.get("fallback") or {}).get("type", "none")))
 
@@ -120,9 +128,17 @@ class PortalConfig:
 
     @property
     def unconfigured_reason(self) -> str | None:
+        if self.mode == "auto":
+            return None if self.portal_host else 'No portal set up yet. Open Settings and click "Detect my portal" while on your Wi-Fi.'
         blob = json.dumps(self.login)
         if "REPLACE_ME" in blob:
             return "portal.json is still the placeholder (contains REPLACE_ME). Fill it in from your captured login."
         if re.search(r"\{\{\s*REVIEW", blob):
             return "portal.json contains unresolved {{REVIEW:...}} fields from the HAR analyzer."
         return None
+
+
+def auto_config_json(ssid: str, host: str, scheme: str, username_field: str | None, password_field: str | None) -> str:
+    """portal.json content for an auto-detected portal (written after the user confirms the host)."""
+    return json.dumps({"schema_version": 1, "mode": "auto", "ssid": ssid, "portal_host": host, "scheme": scheme,
+                       "auto": {"username_field": username_field or "", "password_field": password_field or ""}}, indent=2)

@@ -127,6 +127,7 @@ class Monitor:
             return self._fail("No stored credentials. Open Settings to add them.", Event.LOGIN_FATAL)
         user, pw = creds
         last = ""
+        accepted_offline = 0
         for attempt in range(len(BACKOFF) + 1):
             if attempt:
                 if self.wait(BACKOFF[attempt - 1]):
@@ -153,6 +154,11 @@ class Monitor:
                     return True
                 last = "login accepted but internet still not reachable"
                 self.sm.handle(Event.VERIFY_FAIL)
+                accepted_offline += 1
+                if accepted_offline >= 2:                              # stop rather than risk locking the account
+                    self.sm.handle(Event.LOGIN_START)
+                    return self._fail("The portal accepted the login twice but the internet is still unreachable. "
+                                      "Check your username/password and portal setup.", Event.LOGIN_FATAL)
         return self._fail(f"gave up after {len(BACKOFF) + 1} attempts: {last}", Event.LOGIN_EXHAUSTED) \
             if self.state is State.AUTHENTICATING else self._fail_verify(last)
 

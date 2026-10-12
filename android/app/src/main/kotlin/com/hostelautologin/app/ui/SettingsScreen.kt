@@ -53,8 +53,8 @@ fun SettingsScreen(app: HostelApp) {
             })
         }
 
-        Text("portal.json", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-        Text("Paste the config you built from your own captured login (see README). It is validated before saving.")
+        Text("Advanced: portal.json", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+        Text("Normally set by \"Detect my portal\" in Setup. Only edit this if your portal needs a hand-made login request (see README); it is validated before saving.")
         OutlinedTextField(json, { json = it }, modifier = Modifier.fillMaxWidth(), minLines = 10)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = {
@@ -63,7 +63,7 @@ fun SettingsScreen(app: HostelApp) {
                     app.portal.save(json); AutoLoginService.settingsChanged(); "Saved."
                 } catch (e: ConfigException) { "Invalid: ${e.message}" }
             }) { Text("Save") }
-            OutlinedButton(onClick = { app.portal.reset(); json = app.portal.text(); msg = "Reset to bundled placeholder." }) { Text("Reset") }
+            OutlinedButton(onClick = { app.portal.reset(); json = app.portal.text(); msg = "Reset to automatic mode." }) { Text("Reset") }
         }
         if (msg.isNotEmpty()) Text(msg)
     }

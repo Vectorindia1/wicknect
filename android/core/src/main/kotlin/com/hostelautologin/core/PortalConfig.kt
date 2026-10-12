@@ -26,6 +26,10 @@ data class WebViewSpec(
 )
 
 data class PortalConfig(
+    /** "manual" = login request described in portal.json; "auto" = read the portal's own login form at login time. */
+    val mode: String,
+    val autoUsernameField: String?,
+    val autoPasswordField: String?,
     val ssid: String,
     val portalHost: String,
     val scheme: String,
@@ -51,6 +55,7 @@ data class PortalConfig(
     /** Non-null when the file is still the placeholder / draft; no network call may be made. */
     val unconfiguredReason: String?
         get() {
+            if (mode == "auto") return if (portalHost.isEmpty()) "No portal set up yet. Open Setup and tap \"Detect my portal\" while on your Wi-Fi." else null
             val blob = listOf(loginPath, headers.toString(), fields.toString(), preFetch?.path.orEmpty()).joinToString(" ")
             if ("REPLACE_ME" in blob) return "portal.json is still the placeholder (contains REPLACE_ME). Edit it in Settings."
             if (Regex("""\{\{\s*REVIEW""").containsMatchIn(blob)) return "portal.json contains unresolved {{REVIEW:...}} fields."
@@ -60,20 +65,32 @@ data class PortalConfig(
     companion object {
         private val json = Json { ignoreUnknownKeys = true; isLenient = false }
 
+        /** JSON for an auto-detected portal (what the Setup screen saves after the user confirms the host). */
+        fun autoJson(ssid: String, host: String, scheme: String, userField: String?, passField: String?): String {
+            val o = JsonObject(mapOf(
+                "schema_version" to JsonPrimitive(1), "mode" to JsonPrimitive("auto"), "ssid" to JsonPrimitive(ssid),
+                "portal_host" to JsonPrimitive(host), "scheme" to JsonPrimitive(scheme),
+                "auto" to JsonObject(mapOf("username_field" to JsonPrimitive(userField ?: ""), "password_field" to JsonPrimitive(passField ?: ""))),
+            ))
+            return Json { prettyPrint = true }.encodeToString(JsonObject.serializer(), o)
+        }
+
         fun parse(text: String): PortalConfig {
             val root = try { json.parseToJsonElement(text.removePrefix("﻿")) } catch (e: Exception) {
                 throw ConfigException("portal.json is not valid JSON: ${e.message?.take(120)}")
             }
             val d = root as? JsonObject ?: throw ConfigException("portal.json must be a JSON object")
             if (d.int("schema_version") != 1) throw ConfigException("unsupported or missing schema_version (expected 1)")
+            val mode = d.str("mode", "manual").lowercase()
+            if (mode != "manual" && mode != "auto") throw ConfigException("mode must be manual or auto")
             val host = d.str("portal_host").trim()
-            if (host.isEmpty() || '/' in host || '@' in host || "://" in host)
+            if ((host.isEmpty() && mode == "manual") || '/' in host || '@' in host || "://" in host)
                 throw ConfigException("portal_host must be a bare host or host:port")
             val scheme = d.str("scheme", "http").lowercase()
             if (scheme != "http" && scheme != "https") throw ConfigException("scheme must be http or https")
             val login = d.obj("login")
             val path = login.str("path")
-            if (path.isEmpty()) throw ConfigException("login.path is required")
+            if (path.isEmpty() && mode == "manual") throw ConfigException("login.path is required")
             val method = login.str("method", "POST").uppercase()
             if (method != "GET" && method != "POST") throw ConfigException("login.method must be GET or POST")
             val ctype = login.str("content_type", "form")
@@ -85,8 +102,11 @@ data class PortalConfig(
             val fb = d.obj("fallback")
             val wv = fb["webview"] as? JsonObject
             val jp = success["json_path_equals"] as? JsonObject
+            val auto = d.obj("auto")
             return PortalConfig(
-                ssid = d.str("ssid", "University_Hostel"), portalHost = host, scheme = scheme,
+                mode = mode, autoUsernameField = auto.str("username_field").ifEmpty { null },
+                autoPasswordField = auto.str("password_field").ifEmpty { null },
+                ssid = d.str("ssid", ""), portalHost = host, scheme = scheme,
                 loginPath = path, loginMethod = method, contentType = ctype,
                 headers = login.strMap("headers").filterKeys { it.lowercase() !in FORBIDDEN_HEADERS },
                 fields = login.strMap("fields"),

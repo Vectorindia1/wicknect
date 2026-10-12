@@ -29,7 +29,7 @@ fun interface LoginFallback {
     fun login(config: PortalConfig, username: String, password: String): LoginResult
 }
 
-private class MemoryCookieJar : CookieJar {
+internal class MemoryCookieJar : CookieJar {
     private val store = mutableListOf<Cookie>()
     @Synchronized override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         store.removeAll { old -> cookies.any { it.name == old.name && it.domain == old.domain && it.path == old.path } }
@@ -39,7 +39,7 @@ private class MemoryCookieJar : CookieJar {
 }
 
 private class ConfigProblem(msg: String) : Exception(msg)
-private class Resp(val code: Int, val location: String?, val text: String, val url: HttpUrl) {
+internal class Resp(val code: Int, val location: String?, val text: String, val url: HttpUrl) {
     val isRedirect get() = code in listOf(301, 302, 303, 307, 308) && location != null
 }
 
@@ -99,6 +99,7 @@ class LoginEngine(
         cfg.unconfiguredReason?.let { return LoginResult(Outcome.CONFIG_ERROR, it) }   // no network call
         if (username.isEmpty() || password.isEmpty()) return LoginResult(Outcome.CONFIG_ERROR, "username/password not set")
         Masker.global.register(password)
+        if (cfg.mode == "auto") return PortalDiscovery(baseClient).loginAuto(cfg, username, password)
         val r = direct(username, password)
         if (r.outcome == Outcome.TRANSIENT && cfg.fallbackType == "browser") {
             if (fallback != null) { AppLog.i("direct login failed; trying WebView fallback"); return fallback.login(cfg, username, password) }

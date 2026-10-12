@@ -65,7 +65,7 @@ def test_transient_then_success():
 def test_verify_never_ok_is_bounded():
     e = Env([S] * 10)                        # login "succeeds" but internet never comes
     e.m.tick()
-    assert e.m.state is State.FAILURE and e.logins == 5
+    assert e.m.state is State.FAILURE and e.logins == 2     # stops after two accepted-but-offline results
 
 
 def test_other_ssid_does_nothing():

@@ -139,6 +139,9 @@ class LoginEngine:
             return LoginResult(Outcome.CONFIG_ERROR, reason)          # no network call at all
         if not username or not password:
             return LoginResult(Outcome.CONFIG_ERROR, "username/password not set")
+        if self.cfg.mode == "auto":
+            from .discovery import PortalDiscovery
+            return PortalDiscovery().login_auto(self.cfg, username, password)
         result = self._direct(username, password)
         if result.outcome is Outcome.TRANSIENT and self.cfg.fallback_type == "browser":
             if self.fallback:

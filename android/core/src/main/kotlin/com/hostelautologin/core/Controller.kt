@@ -4,7 +4,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 
 data class Settings(
-    val ssid: String = "University_Hostel",
+    val ssid: String = "",
     val username: String = "",
     val autoLogin: Boolean = true,
     val loginIfSsidUnknown: Boolean = false,
@@ -98,6 +98,7 @@ class Controller(
         }
         Masker.global.register(pw)
         var last = ""
+        var acceptedButOffline = 0
         for (attempt in 0..BACKOFF_SECONDS.size) {
             if (attempt > 0) {
                 sleep(BACKOFF_SECONDS[attempt - 1])
@@ -118,6 +119,11 @@ class Controller(
                 }
                 last = "login accepted but internet still not reachable"
                 sm.handle(Event.VERIFY_FAIL)
+                // Two "accepted but still offline" results in a row: stop, rather than risk locking the account.
+                if (++acceptedButOffline >= 2) {
+                    sm.handle(Event.LOGIN_START)
+                    return fail("The portal accepted the login twice but the internet is still unreachable. Check your username/password and portal setup.", Event.LOGIN_FATAL)
+                }
             }
         }
         if (sm.state != State.AUTHENTICATING) sm.handle(Event.LOGIN_START)   // reach FAILURE from LOGIN_NEEDED

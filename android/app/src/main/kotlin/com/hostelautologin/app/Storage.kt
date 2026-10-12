@@ -22,7 +22,7 @@ class SecureStore(context: Context) {
     }
 
     fun settings() = Settings(
-        ssid = prefs.getString("ssid", null) ?: "University_Hostel",
+        ssid = prefs.getString("ssid", null) ?: "",
         username = prefs.getString("username", "") ?: "",
         autoLogin = prefs.getBoolean("auto_login", true),
         loginIfSsidUnknown = prefs.getBoolean("login_if_ssid_unknown", false),

@@ -1,0 +1,19 @@
+{
+  "_comment": "ADVANCED / manual mode. Only needed when automatic mode cannot read your portal's login form. Build it with tools/har_analyzer.py.",
+  "schema_version": 1,
+  "mode": "manual",
+  "ssid": "MyWifi",
+  "portal_host": "192.0.2.1",
+  "scheme": "http",
+  "login": {
+    "path": "/REPLACE_ME",
+    "method": "POST",
+    "content_type": "form",
+    "headers": { "Referer": "http://192.0.2.1/" },
+    "fields": { "username": "{{username}}", "password": "{{password}}" }
+  },
+  "success": { "status_in": [200, 302], "body_contains": [], "body_not_contains": [] },
+  "bad_credentials": { "body_contains": [], "status_in": [401, 403] },
+  "keepalive": null,
+  "fallback": { "type": "none" }
+}

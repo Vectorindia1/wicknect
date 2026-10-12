@@ -4,6 +4,8 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import com.hostelautologin.core.AppLog
+import com.hostelautologin.core.DetectResult
+import com.hostelautologin.core.PortalDiscovery
 import com.hostelautologin.core.LoginEngine
 import com.hostelautologin.core.LoginResult
 import com.hostelautologin.core.Outcome
@@ -33,6 +35,12 @@ class AndroidPlatform(
     fun loginWith(cfg: PortalConfig, user: String, pw: String): LoginResult {
         val client = wifi.client() ?: return LoginResult(Outcome.TRANSIENT, "not connected to Wi-Fi")
         return LoginEngine(cfg, client, webViewFallback).login(user, pw)
+    }
+
+    /** User-initiated: read the portal's login form so the user can confirm the host. */
+    fun detect(): DetectResult {
+        val client = wifi.client() ?: return DetectResult.Problem("Not connected to Wi-Fi.")
+        return PortalDiscovery(client).detect()
     }
 
     override fun keepalive(cfg: PortalConfig): Boolean {

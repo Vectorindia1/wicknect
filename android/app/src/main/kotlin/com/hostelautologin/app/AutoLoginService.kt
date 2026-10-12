@@ -12,6 +12,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.hostelautologin.core.AppLog
 import com.hostelautologin.core.Controller
+import com.hostelautologin.core.DetectResult
 import com.hostelautologin.core.LoginResult
 import com.hostelautologin.core.Outcome
 import com.hostelautologin.core.State
@@ -96,6 +97,10 @@ class AutoLoginService : Service() {
         platform.loginWith(platform.config(), user, pw)
     } catch (e: Exception) { LoginResult(Outcome.CONFIG_ERROR, e.message ?: "config error") }
 
+    private fun detect(): DetectResult = try { platform.detect() } catch (e: Exception) {
+        DetectResult.Problem("Detection failed: ${e.javaClass.simpleName}")
+    }
+
     companion object {
         private const val NOTIF_ID = 1
         private const val POLL_MS = 15_000L
@@ -106,6 +111,8 @@ class AutoLoginService : Service() {
         }
 
         fun loginNow() { instance?.loginNow() }
+        /** Blocking; call from a background thread. */
+        fun detectPortal(): DetectResult = instance?.detect() ?: DetectResult.Problem("Service is not running yet. Try again in a moment.")
         fun settingsChanged() { instance?.settingsChanged() }
         /** Blocking; call from a background thread. */
         fun testLogin(user: String, pw: String): LoginResult =

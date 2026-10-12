@@ -7,7 +7,9 @@ from tkinter import messagebox, ttk
 from typing import Callable
 
 from . import creds
-from .config import ConfigError, PortalConfig, Settings, portal_json_path
+from .config import ConfigError, PortalConfig, Settings, auto_config_json, portal_json_path
+from .discovery import PortalDiscovery
+from .wifi import current_ssid
 from .login_engine import LoginEngine
 from .masking import masker
 
@@ -32,7 +34,7 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
               foreground="#666").grid(row=3, column=1, sticky="w")
     ttk.Checkbutton(frm, text="Log in automatically", variable=v_auto).grid(row=4, column=1, sticky="w", pady=4)
     status = ttk.Label(frm, text="", wraplength=320, justify="left")
-    status.grid(row=5, column=0, columnspan=2, sticky="w", pady=6)
+    status.grid(row=5, column=0, columnspan=3, sticky="w", pady=6)
 
     def password() -> str:
         return v_pw.get() or (creds.get_password(v_user.get().strip()) or "")
@@ -75,8 +77,41 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
             on_saved(settings)
         root.destroy()
 
+    def use_current():
+        cur = current_ssid()
+        if cur:
+            v_ssid.set(cur)
+        else:
+            status.config(text="Can't read the Wi-Fi name (not connected, or Windows needs Location access). Type it instead.")
+
+    def detect():
+        status.config(text="Looking for your portal's login page…")
+        btn_detect.state(["disabled"])
+
+        def work():
+            res = PortalDiscovery().detect()
+            root.after(0, lambda: done(res))
+
+        def done(res):
+            btn_detect.state(["!disabled"])
+            if res.kind == "online":
+                status.config(text="You already have internet, so there is no login page right now. Reconnect to the Wi-Fi (or wait for the session to expire) and try again.")
+            elif res.kind == "problem":
+                status.config(text=res.message)
+            else:
+                p = res.portal
+                if messagebox.askyesno("HostelAutoLogin", p.summary + f"\n\nSend your username and password to {p.host}?\n"
+                                       "Only continue if this is your Wi-Fi's login page.", parent=root):
+                    portal_json_path().write_text(auto_config_json(v_ssid.get().strip(), p.host, p.scheme,
+                                                                   p.form.username_field, p.form.password_field), encoding="utf-8")
+                    status.config(text=f"Portal saved: {p.scheme}://{p.host}. Now click Test Login.")
+        threading.Thread(target=work, daemon=True).start()
+
+    ttk.Button(frm, text="Use current Wi-Fi", command=use_current).grid(row=0, column=2, padx=6)
     row = ttk.Frame(frm)
-    row.grid(row=6, column=0, columnspan=2, sticky="e")
+    row.grid(row=6, column=0, columnspan=3, sticky="e")
+    btn_detect = ttk.Button(row, text="Detect my portal", command=detect)
+    btn_detect.pack(side="left", padx=4)
     btn_test = ttk.Button(row, text="Test Login", command=test)
     btn_test.pack(side="left", padx=4)
     ttk.Button(row, text="Save", command=save).pack(side="left", padx=4)

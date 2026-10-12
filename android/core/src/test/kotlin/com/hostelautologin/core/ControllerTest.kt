@@ -7,7 +7,7 @@ private class Fake(results: List<LoginResult>, probes: List<Boolean> = emptyList
     val results = results.toMutableList(); val probes = probes.toMutableList()
     var defaultProbe = false; var logins = 0; val notes = mutableListOf<String>(); var ka = 0; var os: Boolean? = null
     var creds: Pair<String, String>? = "u" to "p"
-    override fun settings() = Settings(username = "u")
+    override fun settings() = Settings(ssid = "University_Hostel", username = "u")
     override fun config() = PortalConfig.parse("""{"schema_version":1,"portal_host":"172.16.16.16","login":{"path":"/login"},"keepalive":{"path":"/ka","interval_seconds":30}}""")
     override fun credentials() = creds
     override fun currentSsid() = ssid
@@ -56,7 +56,7 @@ class ControllerTest {
 
     @Test fun verifyNeverOkIsBounded() = runBlocking<Unit> {
         val f = Fake(List(10) { S }); val c = ctl(f)
-        c.tick(); assertEquals(State.FAILURE, c.state); assertEquals(5, f.logins)
+        c.tick(); assertEquals(State.FAILURE, c.state); assertEquals(2, f.logins)   // stops after two accepted-but-offline results
     }
 
     @Test fun otherSsidDoesNothing() = runBlocking<Unit> {

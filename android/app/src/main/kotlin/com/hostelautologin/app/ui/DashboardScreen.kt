@@ -28,6 +28,10 @@ fun DashboardScreen(app: HostelApp) {
     val ui by AppState.ui.collectAsState()
     var auto by remember { mutableStateOf(app.store.settings().autoLogin) }
     Page {
+        val cfgInfo = remember(ui) { try { app.portal.config() } catch (e: Exception) { null } }
+        if (cfgInfo == null || cfgInfo.unconfiguredReason != null || app.store.settings().ssid.isEmpty() || !app.store.hasCredentials())
+            InfoCard("Setup needed", "Open the Setup tab: enter your Wi-Fi name, username and password, then tap \"Detect my portal\".")
+        else InfoCard("Portal", "${cfgInfo.scheme}://${cfgInfo.portalHost} (${cfgInfo.mode})")
         InfoCard("Wi-Fi network (SSID)", ui.ssid ?: "not connected / unreadable")
         InfoCard("State", ui.state.name + if (ui.paused) " (paused)" else "")
         InfoCard("Internet", when (ui.internetOk) { true -> "Reachable"; false -> "Not reachable"; null -> "Unknown" })

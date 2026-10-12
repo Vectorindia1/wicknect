@@ -105,7 +105,9 @@ def test_parse_netsh():
 def test_placeholder_is_unconfigured_and_validation():
     import json, pathlib
     cfg = PortalConfig.from_dict(json.loads((pathlib.Path(__file__).parents[1] / "portal.json").read_text()))
-    assert "REPLACE_ME" in cfg.unconfigured_reason
+    assert cfg.mode == "auto" and "Detect my portal" in cfg.unconfigured_reason          # shipped default: nothing detected yet
+    manual = PortalConfig.from_dict({"schema_version": 1, "portal_host": "x", "login": {"path": "/REPLACE_ME"}})
+    assert "REPLACE_ME" in manual.unconfigured_reason
     with pytest.raises(ConfigError):
         PortalConfig.from_dict({"schema_version": 1, "portal_host": "http://x/", "login": {"path": "/a"}})
     c = PortalConfig.from_dict({"schema_version": 1, "portal_host": "x", "login": {"path": "/a", "headers": {"Cookie": "a=b", "X": "1"}}})
