@@ -1,0 +1,37 @@
+name: HostelAutoLogin
+options:
+  bundleIdPrefix: com.hostelautologin
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  HostelCore:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  HostelAutoLogin:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: HostelCore
+        product: HostelCore
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: HostelAutoLogin
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.hostelautologin.refresh]
+        NSLocalNetworkUsageDescription: "HostelAutoLogin talks to your Wi-Fi's login page, which is often on a local network address."
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hostelautologin.app
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_PREVIEWS: NO
