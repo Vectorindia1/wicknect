@@ -16,6 +16,22 @@ You only need your own Wi-Fi username and password. You never have to edit any f
 2. Connect to your Wi-Fi, check the Wi-Fi name, type your username and password, click **Connect**.
 3. Click **Yes** if it asks "Is this your Wi-Fi's login page?". The app now lives in the tray (bottom-right).
 
+## On your iPhone (iOS)
+iPhones don't allow apps to run in the background all day, so the iPhone version logs you in **when your phone joins the Wi-Fi** (via a small automation) and **whenever you tap a button**. It can't silently re-login every few minutes like Android.
+
+**Install (free, no App Store):**
+1. On a Windows PC or Mac install **Sideloadly** (sideloadly.io) or **AltStore** (altstore.io).
+2. Download `HostelAutoLogin-unsigned.ipa` from the **Releases** page (look for "iOS IPA build").
+3. Plug in your iPhone, open Sideloadly, drag the `.ipa` in, sign in with **your own Apple ID**, click Start.
+4. On the iPhone: Settings → General → VPN & Device Management → trust your Apple ID. Turn on Developer Mode if iOS asks (Settings → Privacy & Security).
+5. Free Apple IDs expire the app after **7 days**; open Sideloadly again to re-sign it. (A paid Apple Developer account lasts a year.)
+
+**Use:**
+1. Connect to your Wi-Fi, open the app → **Connect** tab → username and password → **Connect**. Tap **Yes** when it asks "Is this your Wi-Fi's login page?". Allow *Local Network* when iOS asks.
+2. Open the **Automate** tab and follow the 1-minute steps (Shortcuts → Automation → Wi-Fi → "Log in to Wi-Fi"). After that it logs in by itself each time you join the Wi-Fi.
+3. Optional one-tap login: Settings → Accessibility → Touch → Back Tap → pick "Log in to Wi-Fi", then double-tap the back of the phone any time.
+4. Settings → Wi-Fi → (i) next to your network → **Auto-Join** on, so the iPhone reconnects to the Wi-Fi by itself.
+
 ## Several Wi-Fi names with the same login (hostel, college…)
 Put each name on its own line in the Wi-Fi name box. If a network has a different login page, connect to it and tap **Connect** once more.
 

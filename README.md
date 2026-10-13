@@ -9,6 +9,7 @@ No auth bypass, no MAC spoofing, no scanning. No telemetry; everything stays on 
 | Shared spec / state machine / `portal.json` schema | `docs/SPEC.md` | done |
 | HAR analyzer | `tools/har_analyzer.py` | done, tested on a synthetic HAR |
 | Windows app (Python, tray) | `windows/` | done, 45 tests; `.exe` must be built on Windows |
+| iOS app (SwiftUI + Shortcuts, `ios/`) | `ios/` | builds and passes core tests on GitHub (macOS runner); never run on a real iPhone; unsigned IPA, sideload with Sideloadly/AltStore; cannot run in the background all day (iOS limit) |
 | Android app (Kotlin, Compose) | `android/` | `:core` has 35 JVM tests; `:app` not yet built/run on a device |
 
 **New here? Read `docs/USER_GUIDE.md` (plain-language, no technical steps).**
