@@ -184,7 +184,7 @@ class PortalDiscovery:
     def _session(self) -> requests.Session:
         s = requests.Session()
         s.trust_env = False
-        s.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) HostelAutoLogin/1"
+        s.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Wify/1"
         return s
 
     @staticmethod

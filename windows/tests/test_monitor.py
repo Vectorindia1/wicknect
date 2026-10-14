@@ -35,7 +35,7 @@ def test_retries_follow_backoff_then_failure():
     e.m.tick()
     assert e.m.state is State.FAILURE
     assert e.logins == 5 and e.waits == list(BACKOFF)
-    assert any(n[0].startswith("HostelAutoLogin: login failed") for n in e.notes if isinstance(n, tuple))
+    assert any(n[0].startswith("Wify: login failed") for n in e.notes if isinstance(n, tuple))
 
 
 def test_no_more_attempts_after_failure():

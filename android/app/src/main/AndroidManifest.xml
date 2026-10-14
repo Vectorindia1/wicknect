@@ -16,8 +16,9 @@
     <application
         android:name=".HostelApp"
         android:allowBackup="false"
-        android:icon="@android:drawable/sym_def_app_icon"
-        android:label="HostelAutoLogin"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="Wify"
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 

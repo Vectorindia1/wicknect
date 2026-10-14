@@ -1,5 +1,5 @@
 @echo off
-REM Builds dist\HostelAutoLogin.exe (single windowed exe). Run from the windows\ folder.
+REM Builds dist\Wify.exe (single windowed exe). Run from the windows\ folder.
 setlocal
 cd /d "%~dp0"
 
@@ -14,13 +14,14 @@ python -m pip install -r requirements-dev.txt || (echo [ERROR] pip install faile
 echo Running tests...
 python -m pytest -q || (echo [ERROR] Tests failed; not building. & exit /b 1)
 
-python -m PyInstaller --noconfirm --clean --onefile --noconsole --name HostelAutoLogin ^
+python -m PyInstaller --noconfirm --clean --onefile --noconsole --name Wify --icon wify.ico ^
+  --add-data "assets;assets" ^
   --add-data "portal.json;." ^
   --hidden-import keyring.backends.Windows ^
   --hidden-import pystray._win32 ^
   run_hostelautologin.py || (echo [ERROR] PyInstaller failed. & exit /b 1)
 
 echo.
-echo Built: %CD%\dist\HostelAutoLogin.exe
-echo Edit %%APPDATA%%\HostelAutoLogin\portal.json after the first run (tray menu: Edit portal.json).
+echo Built: %CD%\dist\Wify.exe
+echo Run Wify.exe and follow the Connect window.
 endlocal

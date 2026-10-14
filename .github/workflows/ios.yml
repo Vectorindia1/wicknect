@@ -25,12 +25,12 @@ jobs:
       - name: Package unsigned IPA
         run: |
           mkdir Payload
-          cp -R build/Build/Products/Release-iphoneos/HostelAutoLogin.app Payload/
-          zip -qr HostelAutoLogin-unsigned.ipa Payload
+          cp -R build/Build/Products/Release-iphoneos/Wify.app Payload/
+          zip -qr Wify-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
-          name: HostelAutoLogin-ipa
-          path: ios/HostelAutoLogin-unsigned.ipa
+          name: Wify-ipa
+          path: ios/Wify-unsigned.ipa
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -39,4 +39,4 @@ jobs:
           target_commitish: ${{ github.sha }}
           prerelease: true
           body: "Unsigned IPA. It must be signed on install: use Sideloadly or AltStore with your own Apple ID (see docs/USER_GUIDE.md, iPhone section)."
-          files: ios/HostelAutoLogin-unsigned.ipa
+          files: ios/Wify-unsigned.ipa

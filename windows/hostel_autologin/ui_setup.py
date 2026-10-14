@@ -20,7 +20,7 @@ def show_setup(settings: Settings, on_saved: Callable[[Settings], None] | None =
     """Blocking. Returns True once the user has saved working settings."""
     saved = {"ok": False}
     root = tk.Tk()
-    root.title("HostelAutoLogin – Get connected")
+    root.title("Wify – Get connected")
     root.resizable(False, False)
     frm = ttk.Frame(root, padding=16)
     frm.grid()

@@ -54,7 +54,7 @@ class AndroidPlatform(
     override fun notifyFailure(message: String) {
         val n = NotificationCompat.Builder(context, HostelApp.CH_ALERT)
             .setSmallIcon(android.R.drawable.stat_notify_error)
-            .setContentTitle("HostelAutoLogin: login failed")
+            .setContentTitle("Wify: login failed")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setAutoCancel(true)

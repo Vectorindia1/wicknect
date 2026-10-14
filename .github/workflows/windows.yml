@@ -16,8 +16,8 @@ jobs:
       - run: build.bat
       - uses: actions/upload-artifact@v4
         with:
-          name: HostelAutoLogin-exe
-          path: windows/dist/HostelAutoLogin.exe
+          name: Wify-exe
+          path: windows/dist/Wify.exe
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -25,5 +25,5 @@ jobs:
           name: Windows EXE build ${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           prerelease: true
-          body: "Windows tray app. Download HostelAutoLogin.exe and double-click it."
-          files: windows/dist/HostelAutoLogin.exe
+          body: "Windows tray app. Download Wify.exe and double-click it."
+          files: windows/dist/Wify.exe

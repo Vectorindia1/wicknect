@@ -22,16 +22,18 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: HostelAutoLogin
+        CFBundleDisplayName: Wify
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.hostelautologin.refresh]
-        NSLocalNetworkUsageDescription: "HostelAutoLogin talks to your Wi-Fi's login page, which is often on a local network address."
+        NSLocalNetworkUsageDescription: "Wify talks to your Wi-Fi's login page, which is often on a local network address."
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hostelautologin.app
+        PRODUCT_NAME: Wify
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: NO

@@ -42,7 +42,7 @@ struct HomeView: View {
                         .font(.footnote).foregroundColor(.secondary)
                 }.padding()
             }
-            .navigationTitle("HostelAutoLogin")
+            .navigationTitle("Wify")
             .task { await m.checkOnline() }
             .refreshable { m.refresh(); await m.checkOnline() }
         }.navigationViewStyle(.stack)
@@ -87,14 +87,14 @@ struct AutomateView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     ResultCard(text: "iPhones don't allow apps to run all day in the background. The reliable way is an automation that runs “Log in to Wi-Fi” every time your phone joins your Wi-Fi.", ok: nil)
                     Text("Set it up once (about 1 minute)").font(.headline)
-                    Text("1. Open the Shortcuts app → Automation tab → “+” → Wi-Fi.\n2. Tap Network, pick your Wi-Fi (repeat the steps for each of your Wi-Fi names). Choose “Is Connected”.\n3. Tap Next → New Blank Automation → Add Action.\n4. Search for “Log in to Wi-Fi” (HostelAutoLogin) and add it.\n5. Tap Next, turn on “Run Immediately”, and turn off “Notify When Run” if you like. Tap Done.")
+                    Text("1. Open the Shortcuts app → Automation tab → “+” → Wi-Fi.\n2. Tap Network, pick your Wi-Fi (repeat the steps for each of your Wi-Fi names). Choose “Is Connected”.\n3. Tap Next → New Blank Automation → Add Action.\n4. Search for “Log in to Wi-Fi” (Wify) and add it.\n5. Tap Next, turn on “Run Immediately”, and turn off “Notify When Run” if you like. Tap Done.")
                     Link("Open the Shortcuts app", destination: URL(string: "shortcuts://")!).buttonStyle(.borderedProminent)
                     Text("One-tap login any time").font(.headline)
                     Text("Settings → Accessibility → Touch → Back Tap → Double Tap → pick the shortcut “Log in to Wi-Fi”. Now double-tap the back of your iPhone whenever the Wi-Fi logs you out. You can also add it to the Home Screen or the Action Button.")
                     Text("Keep Wi-Fi connected").font(.headline)
                     Text("Settings → Wi-Fi → (i) next to your network → turn on “Auto-Join”. iPhones reconnect to saved networks by themselves; apps are not allowed to force it.")
                     Text("Also helpful").font(.headline)
-                    Text("Settings → General → Background App Refresh → on for HostelAutoLogin. iOS then runs a quick check now and then (timing is up to iOS, not guaranteed).")
+                    Text("Settings → General → Background App Refresh → on for Wify. iOS then runs a quick check now and then (timing is up to iOS, not guaranteed).")
                 }.padding()
             }.navigationTitle("Automate")
         }.navigationViewStyle(.stack)

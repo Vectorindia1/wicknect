@@ -1,18 +1,18 @@
-# HostelAutoLogin – quick start (for everyone)
+# Wify – quick start (for everyone)
 
 This app logs you in to your Wi-Fi's login page automatically, and reconnects when the Wi-Fi drops.
 You only need your own Wi-Fi username and password. You never have to edit any files.
 
 ## On your phone (Android)
 1. Download the APK from the **Releases** page and open it. If Android asks, allow installing from your browser.
-2. Open **HostelAutoLogin** and allow *Location* and *Notifications* when asked (Android needs Location to read the Wi-Fi name).
+2. Open **Wify** and allow *Location* and *Notifications* when asked (Android needs Location to read the Wi-Fi name).
 3. Connect your phone to your Wi-Fi.
 4. Go to the **Connect** tab, check the Wi-Fi name, type your username and password, tap **Connect**.
 5. If it asks "Is this your Wi-Fi's login page?" tap **Yes** (once).
 6. When it says **You're connected**, tap **Allow background running**. Done.
 
 ## On your computer (Windows)
-1. Download `HostelAutoLogin.exe` from **Releases** and double-click it. (If Windows shows a blue warning, click *More info* → *Run anyway*.)
+1. Download `Wify.exe` from **Releases** and double-click it. (If Windows shows a blue warning, click *More info* → *Run anyway*.)
 2. Connect to your Wi-Fi, check the Wi-Fi name, type your username and password, click **Connect**.
 3. Click **Yes** if it asks "Is this your Wi-Fi's login page?". The app now lives in the tray (bottom-right).
 
@@ -21,7 +21,7 @@ iPhones don't allow apps to run in the background all day, so the iPhone version
 
 **Install (free, no App Store):**
 1. On a Windows PC or Mac install **Sideloadly** (sideloadly.io) or **AltStore** (altstore.io).
-2. Download `HostelAutoLogin-unsigned.ipa` from the **Releases** page (look for "iOS IPA build").
+2. Download `Wify-unsigned.ipa` from the **Releases** page (look for "iOS IPA build").
 3. Plug in your iPhone, open Sideloadly, drag the `.ipa` in, sign in with **your own Apple ID**, click Start.
 4. On the iPhone: Settings → General → VPN & Device Management → trust your Apple ID. Turn on Developer Mode if iOS asks (Settings → Privacy & Security).
 5. Free Apple IDs expire the app after **7 days**; open Sideloadly again to re-sign it. (A paid Apple Developer account lasts a year.)

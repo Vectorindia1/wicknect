@@ -100,7 +100,7 @@ class Monitor:
         log.info(self.last_message)
         if self._reconnect_attempts == 8 and not self._reconnect_alerted:
             self._reconnect_alerted = True
-            self.notify("HostelAutoLogin", "Wi-Fi is still disconnected after several attempts. Check that Wi-Fi is on and in range.")
+            self.notify("Wify", "Wi-Fi is still disconnected after several attempts. Check that Wi-Fi is on and in range.")
 
     def _maybe_keepalive(self) -> None:
         cfg = self.get_config()
@@ -116,7 +116,7 @@ class Monitor:
         """User-initiated: allowed from FAILURE, ignores pause and the rate guard."""
         st = self.get_settings()
         if not self._on_target(st, self._ssid()):
-            self.notify("HostelAutoLogin", f"Not connected to one of your Wi-Fi networks ({', '.join(st.ssids)}).")
+            self.notify("Wify", f"Not connected to one of your Wi-Fi networks ({', '.join(st.ssids)}).")
             return
         self.sm.handle(Event.SSID_MATCH)
         self.sm.handle(Event.USER_LOGIN)
@@ -138,7 +138,7 @@ class Monitor:
         self.last_message = message
         self.sm.handle(event)
         log.error("login failed: %s", message)
-        self.notify("HostelAutoLogin: login failed", message)
+        self.notify("Wify: login failed", message)
         return False
 
     def _cycle(self, user_initiated: bool) -> bool:

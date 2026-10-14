@@ -1,4 +1,6 @@
-# HostelAutoLogin
+<p align="center"><img src="docs/logo.png" width="120" alt="Wify logo"></p>
+
+# Wify
 
 Logs in to a captive-portal Wi-Fi (hostel, hotel, campus, cafe…) with **your own** stored credentials, and logs in
 again when the session expires. Works with portals that use a normal HTML login form; you enter your own SSID and credentials. It only reproduces the normal login flow.
@@ -44,9 +46,9 @@ Requirements: Windows 10/11, Python 3.11+ on PATH.
 cd windows
 build.bat            # venv, deps, tests, PyInstaller --onefile --noconsole
 ```
-Output: `windows\dist\HostelAutoLogin.exe`. First run opens the setup dialog (SSID, username, password, **Test Login**).
+Output: `windows\dist\Wify.exe`. First run opens the setup dialog (SSID, username, password, **Test Login**).
 The password goes to Windows Credential Manager. Use **Detect my portal** in the dialog (advanced: tray → *Edit portal.json*). Logs: `%APPDATA%\HostelAutoLogin\logs` (tray → *Open Logs*).
-`HostelAutoLogin.exe --check-config` validates the file.
+`Wify.exe --check-config` validates the file.
 
 Run from source: `pip install -r requirements-dev.txt && python -m pytest && python -m hostel_autologin`.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HAR analyzer for HostelAutoLogin.
+"""HAR analyzer for Wify.
 
 Reads a HAR file exported from Chrome DevTools, finds the login POST, and prints a
 *redacted* portal.json draft (schema v1, see docs/SPEC.md).

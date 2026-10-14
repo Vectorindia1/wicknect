@@ -17,11 +17,11 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
         working-directory: .
       - run: ./gradlew --no-daemon :core:test :app:assembleRelease
-      - run: cp app/build/outputs/apk/release/app-release.apk HostelAutoLogin.apk
+      - run: cp app/build/outputs/apk/release/app-release.apk Wify.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: HostelAutoLogin-apk
-          path: android/HostelAutoLogin.apk
+          name: Wify-apk
+          path: android/Wify.apk
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -29,5 +29,5 @@ jobs:
           name: Android APK build ${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           prerelease: true
-          body: "Debug-signed APK for personal use. Open this page on your phone and tap HostelAutoLogin.apk."
-          files: android/HostelAutoLogin.apk
+          body: "Debug-signed APK for personal use. Open this page on your phone and tap Wify.apk."
+          files: android/Wify.apk

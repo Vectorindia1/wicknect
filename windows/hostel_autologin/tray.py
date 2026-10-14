@@ -8,7 +8,7 @@ import pystray
 from PIL import Image, ImageDraw
 
 from . import startup
-from .config import Settings, log_dir, portal_json_path
+from .config import Settings, bundled_dir, log_dir, portal_json_path
 from .monitor import Monitor
 from .statemachine import State
 from .ui_setup import show_setup
@@ -18,13 +18,23 @@ COLORS = {State.VALIDATED: "#2e9e4f", State.OFFLINE: "#8a8a8a", State.FAILURE: "
           State.VERIFYING: "#2f73d9"}
 
 
+def _logo() -> Image.Image | None:
+    for base in (bundled_dir(), bundled_dir() / "windows"):
+        p = base / "assets" / "logo.png"
+        if p.exists():
+            return Image.open(p).convert("RGBA").resize((64, 64))
+    return None
+
+
 def make_icon(state: State) -> Image.Image:
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    """Wify logo with a small dot showing the state (green online, red failed, ...)."""
+    img = _logo()
+    if img is None:
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        ImageDraw.Draw(img).ellipse((6, 6, 58, 58), fill="#1a73e8")
     d = ImageDraw.Draw(img)
-    d.ellipse((6, 6, 58, 58), fill=COLORS.get(state, "#8a8a8a"))
-    d.arc((16, 20, 48, 52), 215, 325, fill="white", width=5)
-    d.arc((24, 28, 40, 44), 215, 325, fill="white", width=5)
-    d.ellipse((29, 42, 35, 48), fill="white")
+    d.ellipse((36, 36, 62, 62), fill="white")
+    d.ellipse((40, 40, 58, 58), fill=COLORS.get(state, "#8a8a8a"))
     return img
 
 
@@ -32,7 +42,7 @@ class Tray:
     def __init__(self, monitor: Monitor, settings: Settings, fallback=None):
         self.m, self.settings, self.fallback = monitor, settings, fallback
         self._dialog = threading.Lock()
-        self.icon = pystray.Icon("HostelAutoLogin", make_icon(State.OFFLINE), "HostelAutoLogin", self._menu())
+        self.icon = pystray.Icon("Wify", make_icon(State.OFFLINE), "Wify", self._menu())
         monitor.on_state = self._state_changed
 
     def notify(self, title: str, msg: str) -> None:
@@ -43,7 +53,7 @@ class Tray:
 
     def _state_changed(self, state: State) -> None:
         self.icon.icon = make_icon(state)
-        self.icon.title = f"HostelAutoLogin – {state.value}"
+        self.icon.title = f"Wify – {state.value}"
         self.icon.update_menu()
 
     def _menu(self):
@@ -63,7 +73,7 @@ class Tray:
     def _reconnect_now(self):
         from .wifi import reconnect_wifi
         ok = reconnect_wifi(list(self.settings.ssids))
-        self.notify("HostelAutoLogin", "Asked Windows to reconnect." if ok else "No saved Wi-Fi network to join. Connect to it once manually in Windows first.")
+        self.notify("Wify", "Asked Windows to reconnect." if ok else "No saved Wi-Fi network to join. Connect to it once manually in Windows first.")
 
     def _toggle_pause(self):
         self.m.paused = not self.m.paused

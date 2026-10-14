@@ -1,4 +1,4 @@
-# HostelAutoLogin – Shared Specification
+# Wify – Shared Specification
 
 Applies to both the Windows (Python) and Android (Kotlin) apps.
 Goal: reproduce the **normal, authorized** captive-portal login with the user's **own** stored

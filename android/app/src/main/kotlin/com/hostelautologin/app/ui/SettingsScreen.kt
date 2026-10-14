@@ -38,7 +38,7 @@ fun SettingsScreen(app: HostelApp) {
         Text(if (exempt) "Battery optimization: exempt ✔" else "Battery optimization is ON – Android may stop the service in the background.")
         Button(onClick = { BatteryHelp.requestExemption(ctx); exempt = BatteryHelp.isExempt(ctx) }) { Text("Exempt from battery optimization") }
         Text(
-            "Xiaomi / Redmi / POCO (MIUI, HyperOS): open Autostart and enable HostelAutoLogin, then in the app's Battery saver " +
+            "Xiaomi / Redmi / POCO (MIUI, HyperOS): open Autostart and enable Wify, then in the app's Battery saver " +
                 "choose \"No restrictions\", and lock the app in the Recents screen (long-press the card → lock)." +
                 if (BatteryHelp.isXiaomi) "  (This looks like a Xiaomi device.)" else "",
         )

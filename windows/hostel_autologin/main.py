@@ -43,7 +43,7 @@ def single_instance():
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser("HostelAutoLogin")
+    ap = argparse.ArgumentParser("Wify")
     ap.add_argument("--check-config", action="store_true", help="validate portal.json and exit")
     ap.add_argument("--console-log", action="store_true")
     args = ap.parse_args(argv)
@@ -94,7 +94,7 @@ def main(argv=None) -> int:
                   notify=lambda t, m: holder["tray"].notify(t, m))
     tray = holder["tray"] = Tray(mon, settings, fallback.get_browser_fallback())
     mon.start()
-    log.info("HostelAutoLogin started")
+    log.info("Wify started")
     tray.run()
     return 0
 

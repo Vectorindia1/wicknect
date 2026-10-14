@@ -84,7 +84,7 @@ class AutoLoginService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, HostelApp.CH_STATUS)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("HostelAutoLogin")
+            .setContentTitle("Wify")
             .setContentText(text.take(120))
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open).build()
     }
